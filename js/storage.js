@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   INVESTMENTS: 'financas_investimentos_v1',
   DIVIDENDS: 'financas_proventos_v1',
   DEBTS: 'financas_quitacao_v1',
+  AUTH: 'financas_auth_v1',
   CONFIG: 'financas_config_v1',
   SYNC_STATUS: 'financas_sync_status_v1',
   PENDING_SYNC: 'financas_pending_sync_v1'
@@ -259,6 +260,56 @@ const StorageService = {
       localStorage.setItem(STORAGE_KEYS.DEBTS, JSON.stringify(list));
     }
     return debt;
+  },
+
+  // ------------------------------------------
+  // AUTENTICAÇÃO E SEGURANÇA
+  // ------------------------------------------
+  getAuth() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEYS.AUTH) || 'null');
+    } catch {
+      return null;
+    }
+  },
+
+  setAuth(password) {
+    if (!password) {
+      localStorage.removeItem(STORAGE_KEYS.AUTH);
+      return;
+    }
+    const salt = 'financas_pro_2026_sec';
+    const hash = btoa(encodeURIComponent(salt + password));
+    localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify({ hash, enabled: true, setupDismissed: true }));
+  },
+
+  verifyAuth(password) {
+    const auth = this.getAuth();
+    if (!auth || !auth.enabled) return true;
+    const salt = 'financas_pro_2026_sec';
+    const hash = btoa(encodeURIComponent(salt + password));
+    return auth.hash === hash;
+  },
+
+  hasPassword() {
+    const auth = this.getAuth();
+    return !!(auth && auth.enabled && auth.hash);
+  },
+
+  isSetupDismissed() {
+    const auth = this.getAuth();
+    return !!(auth && auth.setupDismissed);
+  },
+
+  dismissSetup() {
+    const auth = this.getAuth() || {};
+    auth.setupDismissed = true;
+    auth.enabled = false;
+    localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(auth));
+  },
+
+  removeAuth() {
+    localStorage.removeItem(STORAGE_KEYS.AUTH);
   },
 
   // Exportação e Importação de Dados (Backup)

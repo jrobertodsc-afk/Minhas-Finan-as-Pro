@@ -36,6 +36,8 @@ const App = {
     window.StorageService.init();
     this.setupTheme();
     this.setupEventListeners();
+    this.setupPWA();
+    this.checkAuth();
     this.updateSyncBadge();
     this.render();
 
@@ -996,10 +998,39 @@ const App = {
     const urlInput = document.getElementById('cfg-sheets-url');
     const metaInput = document.getElementById('cfg-meta-reserva');
     const custoInput = document.getElementById('cfg-custo-fixo');
+    const metaInvInput = document.getElementById('cfg-meta-investimento');
+    const metaAporteInput = document.getElementById('cfg-meta-aporte');
+    const metaRendaInput = document.getElementById('cfg-meta-renda');
 
     if (urlInput) urlInput.value = config.sheetsUrl || '';
     if (metaInput) metaInput.value = config.metaReserva || 24000;
     if (custoInput) custoInput.value = config.custoFixoMensal || 4000;
+    if (metaInvInput) metaInvInput.value = config.metaInvestimento || 100000;
+    if (metaAporteInput) metaAporteInput.value = config.metaAporteMensal || 1500;
+    if (metaRendaInput) metaRendaInput.value = config.metaRendaPassiva || 500;
+
+    // Atualiza status da senha nas configurações
+    const hasPass = window.StorageService.hasPassword();
+    const badgePass = document.getElementById('cfg-auth-status-badge');
+    const lblBtnPass = document.getElementById('cfg-btn-senha-label');
+    const btnRemoverPass = document.getElementById('cfg-btn-remover-senha');
+
+    if (badgePass) {
+      badgePass.textContent = hasPass ? 'Protegido por Senha' : 'Sem Senha';
+      badgePass.className = hasPass
+        ? 'px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+        : 'px-2.5 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700';
+    }
+    if (lblBtnPass) {
+      lblBtnPass.textContent = hasPass ? 'Alterar Senha' : 'Criar Senha de Acesso';
+    }
+    if (btnRemoverPass) {
+      if (hasPass) {
+        btnRemoverPass.classList.remove('hidden');
+      } else {
+        btnRemoverPass.classList.add('hidden');
+      }
+    }
   },
 
   saveSettingsFromForm() {
@@ -2135,6 +2166,241 @@ const App = {
     if (elGoalProvPct) elGoalProvPct.textContent = pctRenda + '%';
     if (elGoalProvBar) elGoalProvBar.style.width = pctRenda + '%';
     if (elGoalProvFalta) elGoalProvFalta.textContent = faltaRenda > 0 ? 'Faltam ' + this.formatMoney(faltaRenda) + ' para a meta passiva de ' + this.formatMoney(metaRenda) + '/mês' : '🎉 Meta de renda passiva mensal batida!';
+  },
+
+  // ------------------------------------------
+  // SEGURANÇA E AUTENTICAÇÃO (LOGIN / SENHA)
+  // ------------------------------------------
+  checkAuth() {
+    const screenAuth = document.getElementById('screen-auth');
+    if (!screenAuth) return;
+
+    const hasPass = window.StorageService.hasPassword();
+    const isSessionAuth = sessionStorage.getItem('financas_session_authenticated') === 'true';
+
+    // Se já autenticado nesta sessão ou não tem senha e já pulou o setup
+    if (isSessionAuth || (!hasPass && window.StorageService.isSetupDismissed())) {
+      screenAuth.classList.add('hidden');
+      return;
+    }
+
+    screenAuth.classList.remove('hidden');
+
+    const formLogin = document.getElementById('form-auth-login');
+    const formSetup = document.getElementById('form-auth-setup');
+    const subTitle = document.getElementById('auth-subtitle');
+
+    if (hasPass) {
+      // Modo Desbloqueio / Login
+      if (formLogin) formLogin.classList.remove('hidden');
+      if (formSetup) formSetup.classList.add('hidden');
+      if (subTitle) subTitle.textContent = 'Digite sua senha para desbloquear seu painel';
+      const input = document.getElementById('auth-input-password');
+      if (input) {
+        input.value = '';
+        setTimeout(() => input.focus(), 300);
+      }
+    } else {
+      // Modo Primeiro Acesso / Criar Senha
+      if (formLogin) formLogin.classList.add('hidden');
+      if (formSetup) formSetup.classList.remove('hidden');
+      if (subTitle) subTitle.textContent = 'Crie sua senha de acesso inicial';
+      const input = document.getElementById('auth-new-password');
+      if (input) {
+        input.value = '';
+        setTimeout(() => input.focus(), 300);
+      }
+    }
+  },
+
+  handleLogin(e) {
+    e.preventDefault();
+    const pass = document.getElementById('auth-input-password')?.value || '';
+    const errEl = document.getElementById('auth-error-msg');
+
+    if (window.StorageService.verifyAuth(pass)) {
+      if (errEl) errEl.classList.add('hidden');
+      sessionStorage.setItem('financas_session_authenticated', 'true');
+      const screenAuth = document.getElementById('screen-auth');
+      if (screenAuth) screenAuth.classList.add('hidden');
+      this.showToast('Acesso autorizado! Bem-vindo de volta.', 'success');
+      this.checkPWAOffer();
+    } else {
+      if (errEl) {
+        errEl.textContent = 'Senha incorreta. Tente novamente.';
+        errEl.classList.remove('hidden');
+      }
+      const input = document.getElementById('auth-input-password');
+      if (input) {
+        input.value = '';
+        input.focus();
+      }
+    }
+  },
+
+  handleSetupPassword(e) {
+    e.preventDefault();
+    const pass = document.getElementById('auth-new-password')?.value || '';
+    const confirm = document.getElementById('auth-confirm-password')?.value || '';
+    const errEl = document.getElementById('auth-setup-error');
+
+    if (pass.length < 4) {
+      if (errEl) {
+        errEl.textContent = 'A senha deve conter no mínimo 4 caracteres.';
+        errEl.classList.remove('hidden');
+      }
+      return;
+    }
+
+    if (pass !== confirm) {
+      if (errEl) {
+        errEl.textContent = 'As senhas digitadas não coincidem.';
+        errEl.classList.remove('hidden');
+      }
+      return;
+    }
+
+    if (errEl) errEl.classList.add('hidden');
+    window.StorageService.setAuth(pass);
+    sessionStorage.setItem('financas_session_authenticated', 'true');
+    const screenAuth = document.getElementById('screen-auth');
+    if (screenAuth) screenAuth.classList.add('hidden');
+    this.showToast('Senha de acesso criada com sucesso!', 'success');
+    this.renderSettings();
+    this.checkPWAOffer();
+  },
+
+  skipPasswordSetup() {
+    window.StorageService.dismissSetup();
+    sessionStorage.setItem('financas_session_authenticated', 'true');
+    const screenAuth = document.getElementById('screen-auth');
+    if (screenAuth) screenAuth.classList.add('hidden');
+    this.showToast('Acesso liberado sem senha. Você pode definir uma senha em Configurações.', 'info');
+    this.renderSettings();
+    this.checkPWAOffer();
+  },
+
+  lockApp() {
+    if (!window.StorageService.hasPassword()) {
+      if (confirm('Você ainda não definiu uma senha de acesso. Deseja cadastrar uma senha agora?')) {
+        this.openChangePasswordModal();
+      }
+      return;
+    }
+    sessionStorage.removeItem('financas_session_authenticated');
+    this.checkAuth();
+    this.showToast('Aplicativo bloqueado com segurança.', 'info');
+  },
+
+  openChangePasswordModal() {
+    const screenAuth = document.getElementById('screen-auth');
+    const formLogin = document.getElementById('form-auth-login');
+    const formSetup = document.getElementById('form-auth-setup');
+    const subTitle = document.getElementById('auth-subtitle');
+    const errEl = document.getElementById('auth-setup-error');
+
+    if (errEl) errEl.classList.add('hidden');
+    if (subTitle) subTitle.textContent = 'Defina ou altere sua senha de acesso';
+    if (formLogin) formLogin.classList.add('hidden');
+    if (formSetup) formSetup.classList.remove('hidden');
+    if (screenAuth) screenAuth.classList.remove('hidden');
+
+    const input = document.getElementById('auth-new-password');
+    if (input) {
+      input.value = '';
+      setTimeout(() => input.focus(), 300);
+    }
+    const inputConf = document.getElementById('auth-confirm-password');
+    if (inputConf) inputConf.value = '';
+  },
+
+  handleRemovePassword() {
+    if (!window.StorageService.hasPassword()) {
+      this.showToast('Nenhuma senha está configurada no momento.', 'info');
+      return;
+    }
+    if (confirm('Deseja realmente remover a senha de acesso? O aplicativo ficará aberto sem pedir senha.')) {
+      window.StorageService.removeAuth();
+      this.showToast('Senha removida com sucesso.', 'info');
+      this.renderSettings();
+    }
+  },
+
+  togglePasswordVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.type = input.type === 'password' ? 'text' : 'password';
+  },
+
+  // ------------------------------------------
+  // INSTALAÇÃO DO APLICATIVO (PWA NO PC & CELULAR)
+  // ------------------------------------------
+  setupPWA() {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      window.deferredInstallPrompt = e;
+      this.checkPWAOffer();
+    });
+
+    window.addEventListener('appinstalled', () => {
+      window.deferredInstallPrompt = null;
+      const banner = document.getElementById('pwa-install-banner');
+      if (banner) banner.classList.add('hidden');
+      const btnHeader = document.getElementById('btn-header-install');
+      if (btnHeader) btnHeader.classList.add('hidden');
+      this.showToast('🎉 Finanças Pro instalado com sucesso no seu dispositivo!', 'success');
+    });
+
+    // Se já estiver em standalone, esconde botão de instalar
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if (isStandalone) {
+      const btnHeader = document.getElementById('btn-header-install');
+      if (btnHeader) btnHeader.classList.add('hidden');
+    } else {
+      setTimeout(() => this.checkPWAOffer(), 2000);
+    }
+  },
+
+  checkPWAOffer() {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    const isDismissed = sessionStorage.getItem('pwa_banner_dismissed') === 'true';
+    const isAuthVisible = !document.getElementById('screen-auth')?.classList.contains('hidden');
+
+    if (!isStandalone && !isDismissed && !isAuthVisible) {
+      const banner = document.getElementById('pwa-install-banner');
+      if (banner) banner.classList.remove('hidden');
+      if (window.lucide) window.lucide.createIcons();
+    }
+  },
+
+  installPWA() {
+    if (window.deferredInstallPrompt) {
+      window.deferredInstallPrompt.prompt();
+      window.deferredInstallPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          this.showToast('Instalação iniciada!', 'success');
+        }
+        window.deferredInstallPrompt = null;
+        this.dismissInstallBanner();
+      });
+      return;
+    }
+
+    // Se for iOS / iPhone
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIOS) {
+      this.openModal('modal-pwa-ios');
+      return;
+    }
+
+    // Fallback explicativo para navegadores que não disparam o evento automático
+    this.showToast('Para instalar: clique no ícone de instalar na barra de endereço ou no menu (⋮) > "Instalar aplicativo".', 'info');
+  },
+
+  dismissInstallBanner() {
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner) banner.classList.add('hidden');
+    sessionStorage.setItem('pwa_banner_dismissed', 'true');
   },
 
   openInvestmentGoalsModal() {

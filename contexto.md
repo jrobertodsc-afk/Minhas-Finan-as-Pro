@@ -27,7 +27,7 @@ O sistema opera com arquitetura híbrida:
 | **Backend Nuvem** | Google Apps Script (JavaScript V8) | API REST (`doGet` e `doPost`) integrada ao Google Sheets |
 | **Servidor Local** | Node.js nativo (`server.cjs`) | Servidor HTTP na porta `8085` com proxy reverso `/api/proxy` (bypass de CORS) |
 | **Inicializador** | Windows Batch Script (`iniciar-app.bat`) | Inicialização em 1 clique com fallback para Python |
-| **Offline / PWA** | Service Worker v6 (`sw.js`) + `manifest.json` | Suporte offline e instalação como aplicativo móvel/desktop |
+| **Offline / PWA** | Service Worker v7 (`sw.js`) + `manifest.json` + `icon.svg` | Suporte offline e instalação como aplicativo móvel/desktop |
 
 ---
 
@@ -80,8 +80,16 @@ O sistema opera com arquitetura híbrida:
   * **Meta de Renda Passiva / Proventos:** Proventos recebidos no mês vs. meta mensal desejada.
   * Modal para calibração rápida de metas.
 
-### 3.5. Configurações, Nuvem e Segurança
-* **Configuração do Google Sheets:** Inserção da URL da Web App, teste de conexão e botão para envio forçado de dados locais para a nuvem.
+### 3.5. Segurança, Login & Instalação (PWA)
+* **Autenticação com Login e Senha:**
+  * Tela de bloqueio e primeiro acesso para criação de senha com proteção por hash.
+  * Desbloqueio rápido com verificação e sessão memorizada.
+  * Botão de bloqueio instantâneo `[ 🔒 Bloquear ]` no cabeçalho.
+  * Gestão de senha (alteração e remoção) na aba Configurações.
+* **Instalação no PC e Celular (PWA Nativo):**
+  * Banner automático ao abrir a página com botão `[ Instalar ]` para Android e PC (Chrome/Edge).
+  * Botão de instalação permanente no cabeçalho e na aba Configurações.
+  * Modal explicativo dedicado para usuários de iPhone / iPad (Safari).
 * **Backup & Restauração:** Exportação completa de todos os dados em arquivo `.json` e restauração com 1 clique.
 * **Exportação CSV:** Exportação de extrato completo para abertura no Excel.
 * **Alternador de Tema:** Suporte a Dark Mode e Light Mode.

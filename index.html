@@ -11,7 +11,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Finanças Pro">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%2310b981'/><text x='50' y='65' font-size='50' font-family='sans-serif' text-anchor='middle' fill='white'>$</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
   <link rel="manifest" href="manifest.json">
   
   <!-- Fontes & Ícones -->
@@ -76,6 +77,118 @@
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-emerald-500 selection:text-white pb-20 md:pb-0">
+
+  <!-- ========================================================================= -->
+  <!-- TELA DE AUTENTICAÇÃO / LOGIN & SENHA -->
+  <!-- ========================================================================= -->
+  <div id="screen-auth" class="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-2xl flex items-center justify-center p-4 transition-all duration-300">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 md:p-8 space-y-6 shadow-2xl relative text-center">
+      
+      <!-- Logo e Ícone -->
+      <div class="mx-auto w-16 h-16 rounded-3xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 p-0.5 shadow-xl shadow-emerald-500/20 flex items-center justify-center">
+        <div class="w-full h-full bg-slate-900 rounded-[22px] flex items-center justify-center">
+          <i data-lucide="shield-check" class="w-8 h-8 text-emerald-400"></i>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="text-xl font-extrabold text-white">Finanças Pro</h2>
+        <p id="auth-subtitle" class="text-xs text-slate-400 mt-1">Digite sua senha para desbloquear seu painel</p>
+      </div>
+
+      <!-- Formulário de Desbloqueio / Login -->
+      <form id="form-auth-login" onsubmit="App.handleLogin(event)" class="space-y-4 text-left">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Senha de Acesso</label>
+          <div class="relative">
+            <input type="password" id="auth-input-password" required placeholder="Digite sua senha..." class="w-full pl-4 pr-11 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm font-semibold text-white focus:outline-none focus:border-emerald-500">
+            <button type="button" onclick="App.togglePasswordVisibility('auth-input-password')" class="absolute right-3 top-3 text-slate-500 hover:text-slate-300 p-0.5">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <p id="auth-error-msg" class="text-xs text-rose-400 font-semibold hidden text-center"></p>
+
+        <button type="submit" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center space-x-2">
+          <i data-lucide="lock-open" class="w-4 h-4"></i>
+          <span>Desbloquear Painel</span>
+        </button>
+      </form>
+
+      <!-- Formulário de Primeiro Acesso (Criação de Senha) -->
+      <form id="form-auth-setup" onsubmit="App.handleSetupPassword(event)" class="space-y-4 text-left hidden">
+        <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-[11px] text-emerald-300">
+          💡 Defina uma senha de acesso para proteger seus dados financeiros neste dispositivo.
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Nova Senha</label>
+          <input type="password" id="auth-new-password" required minlength="4" placeholder="Digite uma senha..." class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm font-semibold text-white focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Confirme a Senha</label>
+          <input type="password" id="auth-confirm-password" required minlength="4" placeholder="Digite novamente..." class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-sm font-semibold text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <p id="auth-setup-error" class="text-xs text-rose-400 font-semibold hidden text-center"></p>
+
+        <button type="submit" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center space-x-2">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Criar Senha & Acessar</span>
+        </button>
+
+        <button type="button" onclick="App.skipPasswordSetup()" class="w-full text-xs text-slate-400 hover:text-slate-200 text-center py-1 transition">
+          Pular por enquanto (usar sem senha)
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- BANNER DE INSTALAÇÃO DO APLICATIVO (PC E CELULAR) -->
+  <!-- ========================================================================= -->
+  <div id="pwa-install-banner" class="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:max-w-md z-50 p-4 bg-slate-900/95 backdrop-blur-xl border border-emerald-500/30 rounded-3xl shadow-2xl flex items-center justify-between gap-3 hidden transition-all duration-300">
+    <div class="flex items-center space-x-3">
+      <div class="w-11 h-11 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-600/30 shrink-0">
+        <i data-lucide="smartphone" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <h4 class="text-xs font-bold text-white flex items-center space-x-1.5">
+          <span>Instalar Finanças Pro</span>
+          <span class="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 text-[10px] rounded font-semibold">PWA</span>
+        </h4>
+        <p class="text-[11px] text-slate-400 mt-0.5">Instale no seu PC ou celular para acesso rápido e em tela cheia!</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-1.5 shrink-0">
+      <button onclick="App.installPWA()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-md flex items-center space-x-1">
+        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+        <span>Instalar</span>
+      </button>
+      <button onclick="App.dismissInstallBanner()" title="Fechar" class="p-2 text-slate-400 hover:text-white rounded-xl transition">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Instruções de Instalação para iPhone (iOS) -->
+  <div id="modal-pwa-ios" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl relative text-center">
+      <div class="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center mx-auto">
+        <i data-lucide="apple" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-base font-bold text-white">Como instalar no seu iPhone / iPad</h3>
+      <p class="text-xs text-slate-300 text-left leading-relaxed space-y-2">
+        1. No Safari do iPhone, toque no botão <strong>Compartilhar</strong> (o ícone de quadrado com seta para cima <strong>⬆️</strong> no rodapé).<br><br>
+        2. Role as opções para cima e selecione <strong>"Adicionar à Tela de Início"</strong> (ícone de mais ➕).<br><br>
+        3. Toque em <strong>Adicionar</strong> no canto superior direito. Pronto! O ícone do app aparecerá na sua tela inicial!
+      </p>
+      <button onclick="App.closeModal('modal-pwa-ios')" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition">
+        Entendi!
+      </button>
+    </div>
+  </div>
 
   <!-- ========================================================================= -->
   <!-- SIDEBAR (DESKTOP) -->
@@ -175,9 +288,20 @@
           </button>
         </div>
 
+        <!-- Botão Instalar App (visível no PC e Celular) -->
+        <button id="btn-header-install" onclick="App.installPWA()" title="Instalar aplicativo no PC ou Celular" class="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 font-bold text-xs flex items-center space-x-1.5 transition">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Instalar</span>
+        </button>
+
         <!-- Botão Sincronizar Sheets -->
         <button onclick="App.syncFromSheets()" title="Sincronizar com Google Sheets" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 border border-slate-800 transition">
           <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+
+        <!-- Botão Bloquear / Sair -->
+        <button onclick="App.lockApp()" title="Bloquear aplicativo com senha" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-rose-400 border border-slate-800 transition">
+          <i data-lucide="lock" class="w-4 h-4"></i>
         </button>
 
         <!-- Botão Configurações -->
@@ -1035,6 +1159,49 @@
               <li>Clique em <strong>Implantar</strong>, autorize as permissões da sua conta Google e copie a <strong>URL do aplicativo da Web</strong> gerada.</li>
               <li>Cole a URL acima no campo deste aplicativo e clique em <strong>Salvar URL</strong>! Pronto!</li>
             </ol>
+          </div>
+
+          <!-- Segurança & Senha de Acesso -->
+          <div class="space-y-4 pt-6 border-t border-slate-800">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                  <i data-lucide="lock" class="w-4 h-4 text-emerald-400"></i>
+                  <span>Segurança & Senha de Acesso</span>
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">Proteja seus dados financeiros exigindo senha para abrir o aplicativo.</p>
+              </div>
+              <span id="cfg-auth-status-badge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Ativa
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <button onclick="App.openChangePasswordModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition border border-slate-700 flex items-center space-x-1.5">
+                <i data-lucide="key" class="w-4 h-4"></i>
+                <span id="cfg-btn-senha-label">Alterar Senha</span>
+              </button>
+              <button id="cfg-btn-remover-senha" onclick="App.handleRemovePassword()" class="px-4 py-2.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white font-bold text-xs rounded-xl transition border border-rose-500/30 flex items-center space-x-1.5">
+                <i data-lucide="shield-off" class="w-4 h-4"></i>
+                <span>Remover Senha</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Instalação no Celular / PC -->
+          <div class="space-y-4 pt-6 border-t border-slate-800">
+            <div>
+              <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                <i data-lucide="smartphone" class="w-4 h-4 text-blue-400"></i>
+                <span>Instalar no Celular ou PC</span>
+              </h3>
+              <p class="text-xs text-slate-400 mt-0.5">Você pode instalar o Finanças Pro na tela inicial do seu celular (Android ou iPhone) ou no seu computador como um app nativo.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <button onclick="App.installPWA()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition flex items-center space-x-1.5 shadow-lg shadow-emerald-600/20">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Instalar Aplicativo Agora</span>
+              </button>
+            </div>
           </div>
 
           <!-- Backup & Segurança de Dados -->

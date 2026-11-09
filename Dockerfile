@@ -15,3 +15,4 @@ ENV PORT=8085
 
 # Inicia o servidor Node.js com proxy e PWA
 CMD ["node", "server.cjs"]
+
