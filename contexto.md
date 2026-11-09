@@ -1,18 +1,20 @@
 # 📘 Contexto Geral do Projeto - Finanças Pro
 
 > **Data de Atualização:** Novembro de 2026  
-> **Versão da Aplicação:** 2.1.0  
-> **Repositório / Diretório Local:** `c:\Users\Roberto\Desktop\financas pessoais`
+> **Versão da Aplicação:** 2.2.0  
+> **Repositório / Diretório Local:** `c:\Users\Roberto\Desktop\financas pessoais`  
+> **Repositório Remoto (GitHub):** `https://github.com/jrobertodsc-afk/Minhas-Finan-as-Pro`
 
 ---
 
 ## 1. Visão Geral do Sistema
 
-O **Finanças Pro** é um aplicativo financeiro completo, moderno, responsivo (Desktop e Mobile) e progressivo (PWA), desenhado para proporcionar gestão de fluxo de caixa pessoal, reserva de emergência, metas de quitação de dívidas e acompanhamento de carteira de investimentos e proventos.
+O **Finanças Pro** é um aplicativo financeiro pessoal inteligente, completo, moderno, responsivo (Desktop e Mobile) e progressivo (PWA), desenhado para proporcionar gestão de fluxo de caixa contábil integrado, reserva de emergência, metas de quitação de dívidas e acompanhamento de carteira de investimentos e proventos.
 
 O sistema opera com arquitetura híbrida:
-1. **Offline-First (Local):** Operação instantânea no navegador gravando em `LocalStorage` com cache gerenciado por Service Worker.
+1. **Offline-First (Local):** Operação instantânea no navegador gravando em `LocalStorage` com cache gerenciado por Service Worker v8 e PWA instalável no celular e PC.
 2. **Cloud Database (Google Sheets):** Banco de dados em nuvem estruturado em planilha do Google via Web App do Google Apps Script (`Codigo.gs`), permitindo sincronização em tempo real e relatórios nativos com gráficos na própria planilha.
+3. **Cloud Deploy (Render / Docker):** Deploy conteinerizado via Dockerfile em servidor Node.js com proxy reverso integrado.
 
 ---
 
@@ -25,39 +27,47 @@ O sistema opera com arquitetura híbrida:
 | **Ícones** | Lucide Icons | Conjunto de ícones consistentes e vetoriais |
 | **Gráficos (App)** | Chart.js | Visualização de rosca (categorias), barras (fluxo mensal) e alocação |
 | **Backend Nuvem** | Google Apps Script (JavaScript V8) | API REST (`doGet` e `doPost`) integrada ao Google Sheets |
-| **Servidor Local** | Node.js nativo (`server.cjs`) | Servidor HTTP na porta `8085` com proxy reverso `/api/proxy` (bypass de CORS) |
-| **Inicializador** | Windows Batch Script (`iniciar-app.bat`) | Inicialização em 1 clique com fallback para Python |
-| **Offline / PWA** | Service Worker v7 (`sw.js`) + `manifest.json` + `icon.svg` | Suporte offline e instalação como aplicativo móvel/desktop |
+| **Servidor Local / Nuvem** | Node.js nativo (`server.cjs`) | Servidor HTTP na porta `8085` com proxy reverso `/api/proxy` (bypass de CORS) |
+| **Deploy / Container** | Dockerfile multi-stage (`node:20-alpine`) | Implantação automática no Render a partir do branch `main` do GitHub |
+| **Offline / PWA** | Service Worker v8 (`sw.js`) + `manifest.json` + `icon.svg` | Suporte offline e instalação como aplicativo móvel/desktop |
+| **Segurança / Auth** | PIN / Senha criptografada (SHA-256) | Tela de bloqueio com sessão persistente no navegador |
 
 ---
 
 ## 3. Módulos e Funcionalidades
 
-### 3.1. Painel Geral (Dashboard)
-* **Alternador de Período (Mês Selecionado vs Total Geral Acumulado):**
-  * Botões `[ 📅 Mês Selecionado ]` e `[ 🌐 Total Geral Acumulado ]` no topo do Dashboard.
-  * No modo **Total Geral Acumulado**: Exibe o saldo líquido acumulado de todo o histórico cadastrado, receitas totais históricas, despesas totais históricas, total de proventos recebidos acumulados e gráfico de rosca de categorias com base em todo o histórico.
-  * No modo **Mês Selecionado**: Foca no fluxo específico do mês ativo, mas com sub-indicador informando sempre o Acumulado Geral.
-* **Indicadores Principais:** Saldo Líquido (Realizado em conta vs Previsto), Reserva de Emergência Acumulada, Total Investido em Ativos e Patrimônio Líquido Total (Reserva + Carteira + Saldo Geral em conta).
-* **Consolidação de Receitas x Despesas x Poupança:** Três cartões informativos com Receitas Totais, Despesas Totais e Taxa de Sobra/Poupança do período.
-* **Gráficos Visuais:** Distribuição de despesas por categoria (Rosca dinâmica por período) e histórico semestral de receitas x despesas (Colunas).
-* **Painéis Rápidos de Metas:** Acompanhamento do progresso de Metas de Investimento e Quitação de Dívidas.
-* **Últimas Transações:** Lista das movimentações mais recentes em tempo real.
+### 3.1. Painel Geral (Dashboard) Inteligente & Executivo
+* **Motor Contábil com Saldo Residual Anterior (Carryover Automático):**
+  * Saldo vindo do mês anterior é calculado e transportado automaticamente:
+    $$\text{Saldo Residual Anterior} = \sum (\text{Receitas Passadas Pagas}) - \sum (\text{Despesas Passadas Pagas})$$
+  * Destaque no topo em um **Pipeline Contábil em 4 Etapas**:
+    1. **1. Saldo Anterior (Residual):** Sobra líquida acumulada dos meses anteriores.
+    2. **2. (+) Receitas do Mês:** Total previsto com indicação de recebido vs a receber.
+    3. **3. (−) Despesas do Mês:** Total previsto com indicação de pago vs a pagar.
+    4. **4. (=) Saldo Projetado Final:** Saldo previsto para o encerramento do mês.
+* **Saldo Disponível em Conta Hoje:** Exibe com clareza o saldo real em conta no momento (Saldo Anterior + Recebido hoje − Pago hoje).
+* **Barras de Execução Financeira:** Progressos visuais com porcentagens de recebimento e pagamento do mês ativo.
+* **Cards de Indicadores de Alto Nível:**
+  * **Saldo Operacional:** Resultado do mês (Receitas − Despesas).
+  * **Reserva de Emergência:** Total acumulado e barra de progresso da meta.
+  * **Investimentos:** Total investido na carteira e proventos acumulados.
+  * **Patrimônio Consolidado:** Reserva + Carteira de Ativos + Saldo Realizado em Conta.
+* **Gráficos Visuais Modernos:**
+  * **Rosca de Despesas por Categoria:** Donut chart com as novas categorias essenciais do dia a dia e cores dedicadas.
+  * **Fluxo Mensal (6 Meses):** Gráfico de barras comparando receitas vs despesas mês a mês.
+* **Últimas Transações com Quitação Rápida:** Botão de ação rápida direto no Dashboard para marcar despesas/receitas pendentes como pagas com 1 clique!
 
-### 3.2. Despesas & Receitas (Fluxo de Caixa)
-* **Navegação de Meses Rápida:** Botões `[ ◀ ]` (Mês Anterior) e `[ ▶ ]` (Próximo Mês) no topo e seletor com clique direto (`showPicker`).
-* **Filtro de Período Amplo:** Alternância entre `📅 Mês Selecionado` e `🌐 Todos os Meses (Ver Tudo)`.
-* **Filtros Avançados:** Busca textual por descrição, tipo (Receitas/Despesas), status (Todos, Pagos/Recebidos, Pendentes), categorias e métodos de pagamento.
-* **Gestão de Situação de Pagamento & Histórico:**
-  * **Opção de Pagamento no Cadastro:** Escolha visual entre `✓ Já Pago` / `✓ Já Recebido` e `⏳ A Pagar` / `⏳ A Receber`.
-  * **Ação Direta de Quitação:** Botão direto **"Pagar"** (para despesas pendentes) ou **"Receber"** (para receitas pendentes) na própria lista, atualizando na hora e registrando data de efetivação.
-  * **Cards de Indicadores (Acumulado vs Parcial):**
-    * **Receitas:** Total Geral Previsto (Acumulado), Realizado (Recebido) e Parcial a Receber.
-    * **Despesas:** Total Geral Previsto (Acumulado), Realizado (Pago) e Parcial a Pagar.
-    * **Saldo:** Saldo Final Acumulado, Saldo Realizado Atual em conta e Diferença a Liquidar.
-* **Recorrência & Parcelamento Inteligente:**
-  * **Lançamento Único:** Transação padrão com status de pago ou pendente.
-  * **🔁 Recorrente / Fixa:** Opção inteligente de marcar o mês atual como Pago e os próximos como Pendentes.
+### 3.2. Categorias Organizadas do Cotidiano
+* **Despesas:**
+  * `Energia Elétrica (Luz)`, `Internet / TV / Telefone`, `Fatura Cartão de Crédito`, `Água / Saneamento`, `Gás`, `Aluguel / Condomínio`, `Supermercado / Feira`, `Alimentação / Restaurante`, `Combustível`, `Transporte / Uber`, `Manutenção / Veículo`, `Farmácia / Remédios`, `Plano de Saúde / Médico`, `Streaming / Assinaturas`, `Lazer / Viagens`, `Educação / Cursos`, `Vestuário & Cuidados`, `Empréstimo / Financiamento`, `Pets`, `Outros`.
+* **Receitas:**
+  * `Salário / Adiantamento`, `13º Salário / Férias`, `Bônus / Comissões`, `Freelance / Serviços`, `Rendimentos / Dividendos`, `Venda de Bens`, `Reembolso`, `Outros`.
+* Compatibilidade preservada com registros legados.
+
+### 3.3. Despesas & Receitas (Fluxo de Caixa)
+* **Banner de Saldo Residual Anterior:** Mostra a sobra líquida trazida dos meses passados e o total em conta consolidado hoje.
+* **Navegação de Meses Rápida:** Botões `[ ◀ ]` e `[ ▶ ]` e seletor nativo.
+* **Gestão de Pagamentos:** Registro imediato de `Já Pago` vs `A Pagar` e botão de quitação rápida `Pagar` / `Receber`.
   * **💳 Compra Parcelada:** Opção inteligente de marcar a 1ª parcela como Paga agora e as demais parcelas futuras como Pendentes.
 * **Metas de Quitação de Dívidas:**
   * Gestão de empréstimos, financiamentos e saldo devedor de cartões.

@@ -21,6 +21,27 @@ const App = {
 
   // Cores de categorias de despesas
   categoryColors: {
+    'Energia Elétrica (Luz)': '#eab308',
+    'Internet / TV / Telefone': '#06b6d4',
+    'Fatura Cartão de Crédito': '#f43f5e',
+    'Água / Saneamento': '#38bdf8',
+    'Gás': '#fb923c',
+    'Aluguel / Condomínio': '#8b5cf6',
+    'Supermercado / Feira': '#10b981',
+    'Alimentação / Restaurante': '#f97316',
+    'Combustível': '#ef4444',
+    'Transporte / Uber': '#6366f1',
+    'Manutenção / Veículo': '#64748b',
+    'Farmácia / Remédios': '#ec4899',
+    'Plano de Saúde / Médico': '#14b8a6',
+    'Streaming / Assinaturas': '#a855f7',
+    'Lazer / Viagens': '#f59e0b',
+    'Educação / Cursos': '#3b82f6',
+    'Vestuário & Cuidados': '#d946ef',
+    'Empréstimo / Financiamento': '#e11d48',
+    'Pets': '#84cc16',
+    'Outros': '#94a3b8',
+    // Compatibilidade com categorias legadas
     'Alimentação': '#f97316',
     'Moradia': '#06b6d4',
     'Transporte': '#6366f1',
@@ -28,8 +49,7 @@ const App = {
     'Saúde': '#ef4444',
     'Educação': '#8b5cf6',
     'Serviços': '#14b8a6',
-    'Vestuário': '#f43f5e',
-    'Outros': '#64748b'
+    'Vestuário': '#f43f5e'
   },
 
   init() {
@@ -280,8 +300,20 @@ const App = {
     const config = window.StorageService.getConfig();
 
     const isTotal = (this.dashboardPeriod === 'total');
+    const startOfCurrentMonth = this.currentMonth + '-01';
 
-    // 1. Dados do Mês Selecionado
+    // 1. Saldo Residual Vindo dos Meses Anteriores (Lucro/Sobra líquida passada)
+    const pastTrans = transactions.filter(t => {
+      const norm = window.SheetsService ? window.SheetsService.normalizeDate(t.data) : t.data;
+      return (norm || '') < startOfCurrentMonth;
+    });
+
+    const saldoResidualAnterior = isTotal ? 0 : pastTrans.reduce((acc, t) => {
+      if (t.status === 'pendente') return acc;
+      return t.tipo === 'receita' ? acc + Number(t.valor) : acc - Number(t.valor);
+    }, 0);
+
+    // 2. Dados do Mês Selecionado
     const monthTrans = transactions.filter(t => {
       const norm = window.SheetsService ? window.SheetsService.normalizeDate(t.data) : t.data;
       return (norm || '').startsWith(this.currentMonth);
@@ -295,7 +327,7 @@ const App = {
     const despesasPagasMes = monthTrans.filter(t => t.tipo === 'despesa' && t.status !== 'pendente').reduce((acc, t) => acc + Number(t.valor), 0);
     const despesasPendentesMes = monthTrans.filter(t => t.tipo === 'despesa' && t.status === 'pendente').reduce((acc, t) => acc + Number(t.valor), 0);
 
-    const saldoMes = totalReceitasMes - totalDespesasMes;
+    const saldoOperacionalMes = totalReceitasMes - totalDespesasMes;
     const saldoRealizadoMes = receitasPagasMes - despesasPagasMes;
 
     const totalProventosMes = dividends
@@ -305,7 +337,7 @@ const App = {
       })
       .reduce((acc, d) => acc + Number(d.valor), 0);
 
-    // 2. Dados Totais Acumulados Gerais (Todo o Histórico)
+    // 3. Dados Totais Acumulados Gerais (Todo o Histórico)
     const totalReceitasGeral = transactions.filter(t => t.tipo === 'receita').reduce((acc, t) => acc + Number(t.valor), 0);
     const receitasPagasGeral = transactions.filter(t => t.tipo === 'receita' && t.status !== 'pendente').reduce((acc, t) => acc + Number(t.valor), 0);
     const receitasPendentesGeral = transactions.filter(t => t.tipo === 'receita' && t.status === 'pendente').reduce((acc, t) => acc + Number(t.valor), 0);
@@ -319,7 +351,11 @@ const App = {
 
     const totalProventosGeral = dividends.reduce((acc, d) => acc + Number(d.valor), 0);
 
-    // 3. Reserva Total e Investimentos Total
+    // 4. Integração Contábil (Carryover): Saldo Disponível Hoje & Saldo Projetado
+    const saldoContaHoje = isTotal ? saldoRealizadoGeral : (saldoResidualAnterior + saldoRealizadoMes);
+    const saldoProjetadoFinal = isTotal ? saldoGeral : (saldoResidualAnterior + saldoOperacionalMes);
+
+    // 5. Reserva Total e Investimentos Total
     const totalReserva = emergencyFunds.reduce((acc, r) => {
       const val = Number(r.valor) || 0;
       return (r.tipo === 'Resgate') ? acc - val : acc + val;
@@ -331,18 +367,16 @@ const App = {
       return acc + (preco * qtd);
     }, 0);
 
-    // Patrimônio Total: Reserva + Carteira + Saldo Realizado Geral em conta
-    const patrimonioTotal = totalReserva + totalInvestido + (saldoRealizadoGeral > 0 ? saldoRealizadoGeral : 0);
+    // Patrimônio Consolidado = Reserva + Investimentos + Saldo Realizado em Conta
+    const patrimonioTotal = totalReserva + totalInvestido + (saldoContaHoje > 0 ? saldoContaHoje : 0);
 
-    // 4. Seleção dos valores conforme o modo ativo (Mês ou Total Geral)
-    const saldoExibido = isTotal ? saldoGeral : saldoMes;
-    const saldoRealizadoExibido = isTotal ? saldoRealizadoGeral : saldoRealizadoMes;
-    const despesasPendentesExibidas = isTotal ? despesasPendentesGeral : despesasPendentesMes;
+    // 6. Seleção dos valores conforme o modo ativo
     const receitasExibidas = isTotal ? totalReceitasGeral : totalReceitasMes;
     const receitasRealizadasExibidas = isTotal ? receitasPagasGeral : receitasPagasMes;
     const receitasPendentesExibidas = isTotal ? receitasPendentesGeral : receitasPendentesMes;
     const despesasExibidas = isTotal ? totalDespesasGeral : totalDespesasMes;
     const despesasPagasExibidas = isTotal ? despesasPagasGeral : despesasPagasMes;
+    const despesasPendentesExibidas = isTotal ? despesasPendentesGeral : despesasPendentesMes;
     const proventosExibidos = isTotal ? totalProventosGeral : totalProventosMes;
 
     // Indicadores do Header do Dashboard
@@ -362,31 +396,59 @@ const App = {
       ? 'Exibindo dados consolidados de <span class="text-slate-200 font-semibold">Todo o Histórico</span>'
       : `Exibindo dados de <span class="text-slate-200 font-semibold">${nomeMes}</span>`;
 
-    // Atualiza Card 1 (Saldo Líquido)
+    // 7. Atualiza Banner do Fluxo de Caixa Integrado
+    const elFlowAnt = document.getElementById('dash-flow-anterior');
+    const elFlowRec = document.getElementById('dash-flow-receitas');
+    const elFlowDesp = document.getElementById('dash-flow-despesas');
+    const elFlowSaldo = document.getElementById('dash-flow-saldo-final');
+    const elFlowRecPct = document.getElementById('dash-flow-rec-pct');
+    const elFlowDespPct = document.getElementById('dash-flow-desp-pct');
+
+    const pctRec = receitasExibidas > 0 ? Math.min(100, Math.round((receitasRealizadasExibidas / receitasExibidas) * 100)) : 0;
+    const pctDesp = despesasExibidas > 0 ? Math.min(100, Math.round((despesasPagasExibidas / despesasExibidas) * 100)) : 0;
+
+    if (elFlowAnt) {
+      elFlowAnt.textContent = isTotal ? 'R$ 0,00' : this.formatMoney(saldoResidualAnterior);
+      elFlowAnt.className = `text-xl font-black ${saldoResidualAnterior >= 0 ? 'text-blue-400' : 'text-rose-400'}`;
+    }
+    if (elFlowRec) elFlowRec.textContent = this.formatMoney(receitasExibidas);
+    if (elFlowDesp) elFlowDesp.textContent = this.formatMoney(despesasExibidas);
+    if (elFlowSaldo) {
+      elFlowSaldo.textContent = this.formatMoney(saldoProjetadoFinal);
+      elFlowSaldo.className = `text-xl font-black ${saldoProjetadoFinal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+    if (elFlowRecPct) elFlowRecPct.textContent = `${pctRec}% Recebido`;
+    if (elFlowDespPct) elFlowDespPct.textContent = `${pctDesp}% Pago`;
+
+    // 8. Atualiza Card 1 (Saldo Operacional e Saldo em Conta)
     const elLblSaldo = document.getElementById('dash-label-saldo');
     const elSaldo = document.getElementById('dash-saldo-mes');
     const elSaldoReal = document.getElementById('dash-saldo-realizado');
     const elDespPend = document.getElementById('dash-despesas-pendentes');
     const elSaldoComp = document.getElementById('dash-saldo-comparativo');
 
-    if (elLblSaldo) elLblSaldo.textContent = isTotal ? 'Saldo Geral Acumulado' : 'Saldo do Mês';
+    const saldoExibido = isTotal ? saldoGeral : saldoOperacionalMes;
+
+    if (elLblSaldo) elLblSaldo.textContent = isTotal ? 'Saldo Geral Acumulado' : 'Saldo Operacional Mês';
     if (elSaldo) {
       elSaldo.textContent = this.formatMoney(saldoExibido);
       elSaldo.className = `text-2xl lg:text-3xl font-extrabold ${saldoExibido >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
     }
-    if (elSaldoReal) elSaldoReal.textContent = this.formatMoney(saldoRealizadoExibido);
+    if (elSaldoReal) {
+      elSaldoReal.textContent = this.formatMoney(saldoContaHoje);
+      elSaldoReal.className = `font-extrabold text-sm ${saldoContaHoje >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
     if (elDespPend) elDespPend.textContent = this.formatMoney(despesasPendentesExibidas);
     if (elSaldoComp) {
       elSaldoComp.textContent = isTotal
-        ? `No Mês Atual: ${this.formatMoney(saldoMes)}`
+        ? `No Mês Atual: ${this.formatMoney(saldoOperacionalMes)}`
         : `Acumulado Geral: ${this.formatMoney(saldoGeral)}`;
     }
 
-    // Atualiza Card 2 (Reserva)
+    // 9. Atualiza Card 2 (Reserva)
     const elReserva = document.getElementById('dash-total-reserva');
     if (elReserva) elReserva.textContent = this.formatMoney(totalReserva);
 
-    // % Reserva Atingida
     const metaReserva = Number(config.metaReserva) || 20000;
     const pctReserva = Math.min(100, Math.round((totalReserva / metaReserva) * 100));
     const elPctReserva = document.getElementById('dash-pct-reserva');
@@ -394,7 +456,7 @@ const App = {
     if (elPctReserva) elPctReserva.textContent = `${pctReserva}% da meta`;
     if (elBarReserva) elBarReserva.style.width = `${pctReserva}%`;
 
-    // Atualiza Card 3 (Investimentos & Proventos)
+    // 10. Atualiza Card 3 (Investimentos & Proventos)
     const elInvest = document.getElementById('dash-total-investido');
     const elLblProv = document.getElementById('dash-lbl-proventos');
     const elProventos = document.getElementById('dash-proventos-mes');
@@ -409,30 +471,38 @@ const App = {
         : `Total Acumulado: ${this.formatMoney(totalProventosGeral)}`;
     }
 
-    // Atualiza Card 4 (Patrimônio Total)
+    // 11. Atualiza Card 4 (Patrimônio Total)
     const elPatrimonio = document.getElementById('dash-patrimonio-total');
     if (elPatrimonio) elPatrimonio.textContent = this.formatMoney(patrimonioTotal);
 
-    // Atualiza Caixas de Resumo Consolidado (Receitas x Despesas x Poupança)
+    // 12. Atualiza Caixas / Barras de Execução Financeira
     const elLblBoxRec = document.getElementById('dash-lbl-box-receitas');
     const elTotBoxRec = document.getElementById('dash-box-total-receitas');
     const elRecRealBox = document.getElementById('dash-box-rec-realizada');
     const elRecPendBox = document.getElementById('dash-box-rec-pendente');
+    const elRecProgBar = document.getElementById('dash-rec-progress-bar');
+    const elRecProgPct = document.getElementById('dash-rec-progress-pct');
 
     if (elLblBoxRec) elLblBoxRec.textContent = isTotal ? 'Receitas Totais Acumuladas' : 'Receitas do Mês';
     if (elTotBoxRec) elTotBoxRec.textContent = this.formatMoney(receitasExibidas);
     if (elRecRealBox) elRecRealBox.textContent = this.formatMoney(receitasRealizadasExibidas);
     if (elRecPendBox) elRecPendBox.textContent = this.formatMoney(receitasPendentesExibidas);
+    if (elRecProgBar) elRecProgBar.style.width = `${pctRec}%`;
+    if (elRecProgPct) elRecProgPct.textContent = `${pctRec}% recebido`;
 
     const elLblBoxDesp = document.getElementById('dash-lbl-box-despesas');
     const elTotBoxDesp = document.getElementById('dash-box-total-despesas');
     const elDespPagaBox = document.getElementById('dash-box-desp-paga');
     const elDespPendBox = document.getElementById('dash-box-desp-pendente');
+    const elDespProgBar = document.getElementById('dash-desp-progress-bar');
+    const elDespProgPct = document.getElementById('dash-desp-progress-pct');
 
     if (elLblBoxDesp) elLblBoxDesp.textContent = isTotal ? 'Despesas Totais Acumuladas' : 'Despesas do Mês';
     if (elTotBoxDesp) elTotBoxDesp.textContent = this.formatMoney(despesasExibidas);
     if (elDespPagaBox) elDespPagaBox.textContent = this.formatMoney(despesasPagasExibidas);
     if (elDespPendBox) elDespPendBox.textContent = this.formatMoney(despesasPendentesExibidas);
+    if (elDespProgBar) elDespProgBar.style.width = `${pctDesp}%`;
+    if (elDespProgPct) elDespProgPct.textContent = `${pctDesp}% pago`;
 
     const taxaPoupanca = receitasExibidas > 0 ? Math.max(0, Math.round(((receitasExibidas - despesasExibidas) / receitasExibidas) * 100)) : 0;
     const sobraLiquida = receitasExibidas - despesasExibidas;
@@ -442,7 +512,7 @@ const App = {
     if (elTaxaPoup) elTaxaPoup.textContent = `${taxaPoupanca}%`;
     if (elSobraLiq) {
       elSobraLiq.textContent = this.formatMoney(sobraLiquida);
-      elSobraLiq.className = `text-xs font-bold ${sobraLiquida >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      elSobraLiq.className = `font-semibold ${sobraLiquida >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
     }
 
     // Subtítulo do Donut de Despesas
@@ -500,28 +570,41 @@ const App = {
     if (!container) return;
 
     if (items.length === 0) {
-      container.innerHTML = `<div class="p-4 text-center text-slate-500 text-sm">Nenhuma transação registrada ainda.</div>`;
+      container.innerHTML = `<div class="p-6 text-center text-slate-500 text-xs font-medium">Nenhuma transação registrada ainda. Clique em "+ Nova Transação" para começar!</div>`;
       return;
     }
 
     container.innerHTML = items.map(t => {
       const isReceita = t.tipo === 'receita';
+      const isPendente = (t.status === 'pendente');
       return `
-        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800 transition border border-slate-700/50">
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center ${isReceita ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
+        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/40 hover:bg-slate-800/70 transition border border-slate-700/50">
+          <div class="flex items-center space-x-3 min-w-0">
+            <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${isReceita ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
               <i data-lucide="${isReceita ? 'arrow-down-left' : 'arrow-up-right'}" class="w-5 h-5"></i>
             </div>
-            <div>
-              <p class="text-sm font-semibold text-slate-100">${this.escapeHtml(t.descricao || t.categoria)}</p>
-              <p class="text-xs text-slate-400">${this.formatDate(t.data)} • <span class="text-slate-300 font-medium">${t.categoria}</span></p>
+            <div class="min-w-0">
+              <p class="text-xs sm:text-sm font-bold text-slate-100 truncate">${this.escapeHtml(t.descricao || t.categoria)}</p>
+              <p class="text-[11px] text-slate-400">${this.formatDate(t.data)} • <span class="text-slate-300 font-medium">${t.categoria}</span></p>
             </div>
           </div>
-          <div class="text-right">
-            <p class="text-sm font-bold ${isReceita ? 'text-emerald-400' : 'text-slate-200'}">
-              ${isReceita ? '+' : '-'} ${this.formatMoney(t.valor)}
-            </p>
-            <span class="text-[10px] px-2 py-0.5 rounded-full ${t.metodo ? 'bg-slate-700 text-slate-300' : ''}">${t.metodo || 'Geral'}</span>
+          <div class="flex items-center space-x-3 shrink-0">
+            <div class="text-right">
+              <p class="text-xs sm:text-sm font-black ${isReceita ? 'text-emerald-400' : 'text-slate-200'}">
+                ${isReceita ? '+' : '-'} ${this.formatMoney(t.valor)}
+              </p>
+              <span class="text-[10px] px-2 py-0.5 rounded-full ${t.metodo ? 'bg-slate-700/80 text-slate-300' : ''}">${t.metodo || 'Geral'}</span>
+            </div>
+            ${isPendente ? `
+              <button onclick="App.markAsPaid('${t.id}')" title="${isReceita ? 'Marcar como Recebido' : 'Marcar como Pago'}" class="px-2.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white text-[11px] font-bold transition flex items-center space-x-1 border border-emerald-500/30 shadow-sm">
+                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                <span class="hidden sm:inline">${isReceita ? 'Receber' : 'Pagar'}</span>
+              </button>
+            ` : `
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                ✓ ${isReceita ? 'Recebido' : 'Pago'}
+              </span>
+            `}
           </div>
         </div>
       `;
@@ -598,6 +681,37 @@ const App = {
     const saldoPrevisto = totalReceitas - totalDespesas;
     const saldoRealizado = receitasPagas - despesasPagas;
     const saldoLiquidar = receitasPendentes - despesasPendentes;
+
+    // Saldo Residual Anterior (Carryover de meses passados)
+    const startOfCurrentMonth = this.currentMonth + '-01';
+    const pastTrans = transactions.filter(t => {
+      const norm = window.SheetsService ? window.SheetsService.normalizeDate(t.data) : t.data;
+      return (norm || '') < startOfCurrentMonth;
+    });
+
+    const saldoAnteriorRealizado = this.filterAllMonths ? 0 : pastTrans.reduce((acc, t) => {
+      if (t.status === 'pendente') return acc;
+      return t.tipo === 'receita' ? acc + Number(t.valor) : acc - Number(t.valor);
+    }, 0);
+
+    const saldoContaHoje = saldoAnteriorRealizado + saldoRealizado;
+
+    // Atualização do Banner de Saldo Residual Anterior
+    const elExpSaldoAnt = document.getElementById('exp-saldo-anterior');
+    const elExpContaHoje = document.getElementById('exp-total-conta-hoje');
+    const elExpBannerCarryover = document.getElementById('exp-banner-carryover');
+
+    if (elExpSaldoAnt) {
+      elExpSaldoAnt.textContent = this.formatMoney(saldoAnteriorRealizado);
+      elExpSaldoAnt.className = `text-base font-black ${saldoAnteriorRealizado >= 0 ? 'text-blue-400' : 'text-rose-400'}`;
+    }
+    if (elExpContaHoje) {
+      elExpContaHoje.textContent = this.formatMoney(saldoContaHoje);
+      elExpContaHoje.className = `text-xs font-black ${saldoContaHoje >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+    if (elExpBannerCarryover) {
+      elExpBannerCarryover.style.display = this.filterAllMonths ? 'none' : 'flex';
+    }
 
     // Atualização dos cards de resumo
     const elTotRec = document.getElementById('exp-total-receitas');
@@ -1411,8 +1525,39 @@ const App = {
     const catSelect = document.getElementById('trans-categoria');
     if (!catSelect) return;
 
-    const despesaCats = ['Alimentação', 'Moradia', 'Transporte', 'Lazer', 'Saúde', 'Educação', 'Serviços', 'Vestuário', 'Outros'];
-    const receitaCats = ['Salário', 'Freelance', 'Investimentos', 'Venda', 'Presente', 'Outros'];
+    const despesaCats = [
+      'Energia Elétrica (Luz)',
+      'Internet / TV / Telefone',
+      'Fatura Cartão de Crédito',
+      'Água / Saneamento',
+      'Gás',
+      'Aluguel / Condomínio',
+      'Supermercado / Feira',
+      'Alimentação / Restaurante',
+      'Combustível',
+      'Transporte / Uber',
+      'Manutenção / Veículo',
+      'Farmácia / Remédios',
+      'Plano de Saúde / Médico',
+      'Streaming / Assinaturas',
+      'Lazer / Viagens',
+      'Educação / Cursos',
+      'Vestuário & Cuidados',
+      'Empréstimo / Financiamento',
+      'Pets',
+      'Outros'
+    ];
+
+    const receitaCats = [
+      'Salário / Adiantamento',
+      '13º Salário / Férias',
+      'Bônus / Comissões',
+      'Freelance / Serviços',
+      'Rendimentos / Dividendos',
+      'Venda de Bens',
+      'Reembolso',
+      'Outros'
+    ];
 
     const cats = tipo === 'receita' ? receitaCats : despesaCats;
     catSelect.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
