@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Finanças Pro • Gestão, Reserva & Investimentos</title>
+  
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Finanças Pro">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%2310b981'/><text x='50' y='65' font-size='50' font-family='sans-serif' text-anchor='middle' fill='white'>$</text></svg>">
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Fontes & Ícones -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            slate: {
+              850: '#151f33',
+              900: '#0f172a',
+              950: '#080d1a',
+            },
+            brand: {
+              50: '#ecfdf5',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons & Chart.js -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Estilos Customizados para App Experience */
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Esconde barra de rolagem mas mantém rolagem */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* Animação suave para modais e tabs */
+    .tab-content {
+      animation: fadeIn 0.25s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col md:flex-row antialiased selection:bg-emerald-500 selection:text-white pb-20 md:pb-0">
+
+  <!-- ========================================================================= -->
+  <!-- SIDEBAR (DESKTOP) -->
+  <!-- ========================================================================= -->
+  <aside class="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800/80 p-5 shrink-0 justify-between">
+    <div>
+      <!-- Logo -->
+      <div class="flex items-center space-x-3 px-2 mb-8">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+          <i data-lucide="wallet-cards" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-extrabold tracking-tight text-white">Finanças<span class="text-emerald-400">Pro</span></h1>
+          <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Sheets Sync</p>
+        </div>
+      </div>
+
+      <!-- Menu Principal -->
+      <nav class="space-y-1">
+        <button data-tab="dashboard" class="w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-sm font-semibold transition text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+          <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+          <span>Visão Geral</span>
+        </button>
+        <button data-tab="despesas" class="w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-sm font-semibold transition text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+          <i data-lucide="receipt" class="w-5 h-5"></i>
+          <span>Despesas & Receitas</span>
+        </button>
+        <button data-tab="reserva" class="w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-sm font-semibold transition text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+          <i data-lucide="shield-check" class="w-5 h-5"></i>
+          <span>Reserva Emergência</span>
+        </button>
+        <button data-tab="investimentos" class="w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-sm font-semibold transition text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+          <i data-lucide="pie-chart" class="w-5 h-5"></i>
+          <span>Investimentos</span>
+        </button>
+        <button data-tab="config" class="w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-sm font-semibold transition text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+          <i data-lucide="table-2" class="w-5 h-5"></i>
+          <span>Google Sheets</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Rodapé Sidebar -->
+    <div class="space-y-3 pt-4 border-t border-slate-800">
+      <div class="sync-status-badge flex items-center space-x-2 px-3 py-2 rounded-xl bg-slate-800 text-xs font-semibold text-slate-400">
+        <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+        <span>Modo Local</span>
+      </div>
+      <button onclick="App.openTransactionModal('despesa')" class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-2xl font-bold text-sm shadow-lg shadow-emerald-600/30 transition flex items-center justify-center space-x-2">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        <span>Nova Transação</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ========================================================================= -->
+  <!-- CONTEÚDO PRINCIPAL (MOBILE & DESKTOP) -->
+  <!-- ========================================================================= -->
+  <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+    
+    <!-- Top Header -->
+    <header class="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 px-4 md:px-8 py-3.5 flex items-center justify-between">
+      <!-- Identificação Mobile -->
+      <div class="flex items-center space-x-3 md:hidden">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-md">
+          <i data-lucide="wallet-cards" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <span class="text-sm font-extrabold text-white">Finanças<span class="text-emerald-400">Pro</span></span>
+          <div class="sync-status-badge flex items-center space-x-1 text-[10px] text-amber-400 font-medium">
+            <span>● Modo Local</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Título Desktop -->
+      <div class="hidden md:flex items-center space-x-3">
+        <h2 id="top-section-title" class="text-lg font-bold text-white">Painel Financeiro</h2>
+        <div class="sync-status-badge"></div>
+      </div>
+
+      <!-- Controles de Cabeçalho (Mês, Sincronizar, Config) -->
+      <div class="flex items-center space-x-2">
+        <!-- Navegação Rápida de Mês com Setas < > e Seletor -->
+        <div class="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 text-xs text-slate-300 shadow-sm">
+          <button onclick="App.prevMonth()" title="Mês Anterior (◀)" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition">
+            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+          </button>
+          
+          <div class="flex items-center px-1.5 py-0.5 cursor-pointer hover:bg-slate-800/80 rounded-lg transition" onclick="const inp = document.getElementById('month-selector'); if (inp.showPicker) { inp.showPicker(); } else { inp.focus(); }">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-emerald-400 mr-1.5"></i>
+            <input type="month" id="month-selector" class="bg-transparent text-slate-100 text-xs font-bold focus:outline-none cursor-pointer">
+          </div>
+
+          <button onclick="App.nextMonth()" title="Próximo Mês (▶)" class="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition">
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <!-- Botão Sincronizar Sheets -->
+        <button onclick="App.syncFromSheets()" title="Sincronizar com Google Sheets" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 border border-slate-800 transition">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+
+        <!-- Botão Configurações -->
+        <button onclick="App.switchTab('config')" title="Configurações e Planilha" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-slate-100 border border-slate-800 transition">
+          <i data-lucide="settings" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Área de Conteúdo das Abas -->
+    <div class="p-4 md:p-8 max-w-7xl w-full mx-auto space-y-6">
+
+      <!-- ========================================================================= -->
+      <!-- ABA 1: VISÃO GERAL (DASHBOARD) -->
+      <!-- ========================================================================= -->
+      <section id="tab-dashboard" class="tab-content space-y-6">
+        
+        <!-- Barra de Controle do Dashboard: Mês Selecionado vs Total Geral Acumulado -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-slate-900/80 border border-slate-800 rounded-3xl">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+              <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="text-base font-extrabold text-white flex items-center space-x-2">
+                <span>Painel Financeiro</span>
+                <span id="dash-periodo-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Mês Selecionado</span>
+              </h2>
+              <p id="dash-periodo-desc" class="text-xs text-slate-400">Exibindo dados de <span class="text-slate-200 font-semibold" id="dash-periodo-nome">...</span></p>
+            </div>
+          </div>
+
+          <!-- Botões de Alternância Mês vs Total Geral -->
+          <div class="flex items-center p-1 bg-slate-950 rounded-2xl border border-slate-800 self-start sm:self-auto">
+            <button id="btn-dash-periodo-mes" onclick="App.setDashboardPeriod('mes')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white transition flex items-center space-x-1.5 shadow-sm">
+              <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+              <span>Mês Selecionado</span>
+            </button>
+            <button id="btn-dash-periodo-total" onclick="App.setDashboardPeriod('total')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-transparent text-slate-400 hover:text-white transition flex items-center space-x-1.5">
+              <i data-lucide="globe" class="w-3.5 h-3.5"></i>
+              <span>Total Geral Acumulado</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Cards de Métricas Principais -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Saldo Líquido -->
+          <div class="p-5 rounded-3xl bg-slate-900/80 border border-slate-800/80 shadow-sm relative overflow-hidden flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span id="dash-label-saldo" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Saldo do Mês</span>
+                <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                  <i data-lucide="wallet" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <p id="dash-saldo-mes" class="text-2xl lg:text-3xl font-extrabold text-emerald-400">R$ 0,00</p>
+              <p id="dash-saldo-comparativo" class="text-[11px] text-slate-400 mt-1 font-medium">Acumulado Geral: R$ 0,00</p>
+            </div>
+            <div class="flex items-center justify-between text-xs text-slate-400 mt-3 pt-2.5 border-t border-slate-800/60">
+              <span>Realizado: <strong id="dash-saldo-realizado" class="text-emerald-400 font-semibold">R$ 0,00</strong></span>
+              <span>A Pagar: <strong id="dash-despesas-pendentes" class="text-amber-400 font-semibold">R$ 0,00</strong></span>
+            </div>
+          </div>
+
+          <!-- Reserva de Emergência -->
+          <div class="p-5 rounded-3xl bg-slate-900/80 border border-slate-800/80 shadow-sm relative overflow-hidden cursor-pointer hover:border-slate-700 transition" onclick="App.switchTab('reserva')">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Reserva Emergência</span>
+              <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <i data-lucide="shield-check" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <p id="dash-total-reserva" class="text-2xl lg:text-3xl font-extrabold text-white">R$ 0,00</p>
+            <div class="mt-3">
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                <span>Progresso</span>
+                <span id="dash-pct-reserva" class="font-bold text-blue-400">0%</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div id="dash-bar-reserva" class="h-full bg-blue-500 rounded-full transition-all duration-500" style="width: 0%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Total Investido -->
+          <div class="p-5 rounded-3xl bg-slate-900/80 border border-slate-800/80 shadow-sm relative overflow-hidden cursor-pointer hover:border-slate-700 transition flex flex-col justify-between" onclick="App.switchTab('investimentos')">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Investimentos</span>
+                <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                  <i data-lucide="trending-up" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <p id="dash-total-investido" class="text-2xl lg:text-3xl font-extrabold text-white">R$ 0,00</p>
+              <p id="dash-proventos-comparativo" class="text-[11px] text-amber-400/90 mt-1 font-medium">Proventos Total: R$ 0,00</p>
+            </div>
+            <div class="flex items-center justify-between text-xs text-slate-400 mt-3 pt-2.5 border-t border-slate-800/60">
+              <span id="dash-lbl-proventos">Proventos Mês:</span>
+              <span id="dash-proventos-mes" class="font-bold text-amber-400">R$ 0,00</span>
+            </div>
+          </div>
+
+          <!-- Patrimônio Total -->
+          <div class="p-5 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-850 border border-slate-800 shadow-sm relative overflow-hidden">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Patrimônio Total</span>
+              <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <i data-lucide="coins" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <p id="dash-patrimonio-total" class="text-2xl lg:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">R$ 0,00</p>
+            <p class="text-xs text-slate-400 mt-2 pt-2 border-t border-slate-800/60">Reserva + Carteira + Saldo Acumulado</p>
+          </div>
+        </div>
+
+        <!-- Resumo Consolidado do Período (Receitas x Despesas x Sobra) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+            <div class="space-y-0.5">
+              <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider flex items-center space-x-1.5">
+                <i data-lucide="arrow-down-left" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span id="dash-lbl-box-receitas">Receitas do Mês</span>
+              </span>
+              <p id="dash-box-total-receitas" class="text-lg font-black text-emerald-400">R$ 0,00</p>
+            </div>
+            <div class="text-right text-xs">
+              <span class="text-slate-400">Realizado: <strong id="dash-box-rec-realizada" class="text-emerald-400 font-semibold">R$ 0,00</strong></span>
+              <p class="text-[11px] text-slate-500">Pendente: <span id="dash-box-rec-pendente" class="text-amber-400 font-medium">R$ 0,00</span></p>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+            <div class="space-y-0.5">
+              <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider flex items-center space-x-1.5">
+                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 text-rose-400"></i>
+                <span id="dash-lbl-box-despesas">Despesas do Mês</span>
+              </span>
+              <p id="dash-box-total-despesas" class="text-lg font-black text-rose-400">R$ 0,00</p>
+            </div>
+            <div class="text-right text-xs">
+              <span class="text-slate-400">Pago: <strong id="dash-box-desp-paga" class="text-rose-400 font-semibold">R$ 0,00</strong></span>
+              <p class="text-[11px] text-slate-500">A Pagar: <span id="dash-box-desp-pendente" class="text-amber-400 font-medium">R$ 0,00</span></p>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+            <div class="space-y-0.5">
+              <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider flex items-center space-x-1.5">
+                <i data-lucide="piggy-bank" class="w-3.5 h-3.5 text-blue-400"></i>
+                <span>Taxa de Sobra / Poupança</span>
+              </span>
+              <p id="dash-box-taxa-poupanca" class="text-lg font-black text-blue-400">0%</p>
+            </div>
+            <div class="text-right text-xs">
+              <span class="text-slate-400">Sobra Líquida:</span>
+              <p id="dash-box-sobra-liquida" class="text-xs font-bold text-white">R$ 0,00</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção de Gráficos do Dashboard -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Despesas por Categoria (Donut) -->
+          <div class="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/80 flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-white text-base">Despesas por Categoria</h3>
+                <p id="dash-chart-donut-subtitle" class="text-xs text-slate-400">Distribuição do mês atual</p>
+              </div>
+              <button onclick="App.openTransactionModal('despesa')" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">+ Adicionar</button>
+            </div>
+            <div class="relative h-64 w-full">
+              <canvas id="chart-categories"></canvas>
+            </div>
+          </div>
+
+          <!-- Fluxo Semestral (Receitas x Despesas) -->
+          <div class="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/80 flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-white text-base">Fluxo Mensal (Últimos 6 meses)</h3>
+                <p class="text-xs text-slate-400">Receitas vs Despesas</p>
+              </div>
+            </div>
+            <div class="relative h-64 w-full">
+              <canvas id="chart-monthly-flow"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Painel Rápido de Metas: Investimento & Quitação -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Card Rápido: Metas de Investimento -->
+          <div class="p-6 rounded-3xl bg-gradient-to-br from-purple-950/20 via-slate-900 to-slate-900 border border-purple-500/20 space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                  <i data-lucide="target" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-white text-sm">Metas de Investimento</h4>
+                  <p class="text-[11px] text-slate-400">Rumo à independência financeira</p>
+                </div>
+              </div>
+              <button onclick="App.switchTab('investimentos')" class="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center space-x-1">
+                <span>Detalhes</span>
+                <i data-lucide="chevron-right" class="w-3 h-3"></i>
+              </button>
+            </div>
+
+            <div class="space-y-3">
+              <div>
+                <div class="flex items-center justify-between text-xs mb-1">
+                  <span class="text-slate-400 font-medium">Patrimônio Investido:</span>
+                  <span id="dash-goal-patrimonio-info" class="font-bold text-purple-400">R$ 0 / R$ 0 (0%)</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div id="dash-goal-patrimonio-bar" class="h-full bg-purple-500 rounded-full transition-all duration-500" style="width: 0%;"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between text-xs mb-1">
+                  <span class="text-slate-400 font-medium">Aporte Mensal:</span>
+                  <span id="dash-goal-aporte-info" class="font-bold text-emerald-400">R$ 0 / R$ 0 (0%)</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div id="dash-goal-aporte-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-500" style="width: 0%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card Rápido: Metas de Quitação de Dívidas -->
+          <div class="p-6 rounded-3xl bg-gradient-to-br from-rose-950/20 via-slate-900 to-slate-900 border border-rose-500/20 space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center">
+                  <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-white text-sm">Metas de Quitação</h4>
+                  <p class="text-[11px] text-slate-400">Amortização de dívidas e financiamentos</p>
+                </div>
+              </div>
+              <button onclick="App.switchTab('despesas')" class="text-xs font-bold text-rose-400 hover:text-rose-300 flex items-center space-x-1">
+                <span>Gerenciar</span>
+                <i data-lucide="chevron-right" class="w-3 h-3"></i>
+              </button>
+            </div>
+
+            <div class="space-y-3">
+              <div>
+                <div class="flex items-center justify-between text-xs mb-1">
+                  <span class="text-slate-400 font-medium">Progresso de Quitação:</span>
+                  <span id="dash-debt-pct-info" class="font-bold text-emerald-400">0% Quitado</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div id="dash-debt-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500" style="width: 0%;"></div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
+                <span class="text-slate-400">Saldo Devedor Restante:</span>
+                <span id="dash-debt-restante-info" class="font-bold text-rose-400">R$ 0,00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transações Recentes -->
+        <div class="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/80 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-bold text-white text-base">Últimas Transações</h3>
+              <p class="text-xs text-slate-400">Movimentações registradas recentemente</p>
+            </div>
+            <button onclick="App.switchTab('despesas')" class="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center space-x-1">
+              <span>Ver todas</span>
+              <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+          <div id="dash-recent-transactions" class="space-y-2">
+            <!-- Injetado via JavaScript -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- ABA 2: DESPESAS & RECEITAS -->
+      <!-- ========================================================================= -->
+      <section id="tab-despesas" class="tab-content hidden space-y-6">
+        <!-- Top Bar de Ações e Filtros -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 rounded-3xl bg-slate-900/80 border border-slate-800/80">
+          <div>
+            <h2 class="text-xl font-extrabold text-white">Controle de Despesas & Receitas</h2>
+            <p class="text-xs text-slate-400">Gerencie entradas e saídas do mês</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="App.exportTransactionsCSV()" title="Exportar Extrato em CSV / Excel" class="px-3.5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center space-x-1.5 transition border border-slate-700">
+              <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">Exportar CSV</span>
+            </button>
+            <button onclick="App.openTransactionModal('despesa')" class="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-lg shadow-rose-600/20 transition">
+              <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+              <span>Nova Despesa</span>
+            </button>
+            <button onclick="App.openTransactionModal('receita')" class="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-lg shadow-emerald-600/20 transition">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              <span>Nova Receita</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Resumo do Mês das Despesas: Total Acumulado vs Parcial Realizado / Pendente -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Card Receitas -->
+          <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400 font-semibold uppercase flex items-center space-x-1">
+                <i data-lucide="trending-up" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span>Receitas do Mês</span>
+              </span>
+              <span id="exp-badge-receitas" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Previsto</span>
+            </div>
+            <div>
+              <p id="exp-total-receitas" class="text-2xl font-black text-emerald-400">R$ 0,00</p>
+              <p class="text-[11px] text-slate-400 font-medium mt-0.5">Total Geral Acumulado</p>
+            </div>
+            <div class="pt-2 border-t border-slate-800/80 space-y-1 text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 flex items-center space-x-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+                  <span>Realizado (Recebido):</span>
+                </span>
+                <strong id="exp-receitas-pagas" class="text-emerald-400 font-semibold">R$ 0,00</strong>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 flex items-center space-x-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>
+                  <span>Parcial a Receber:</span>
+                </span>
+                <strong id="exp-receitas-pendentes" class="text-amber-400 font-semibold">R$ 0,00</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card Despesas -->
+          <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400 font-semibold uppercase flex items-center space-x-1">
+                <i data-lucide="trending-down" class="w-3.5 h-3.5 text-rose-400"></i>
+                <span>Despesas do Mês</span>
+              </span>
+              <span id="exp-badge-despesas" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">Previsto</span>
+            </div>
+            <div>
+              <p id="exp-total-despesas" class="text-2xl font-black text-rose-400">R$ 0,00</p>
+              <p class="text-[11px] text-slate-400 font-medium mt-0.5">Total Geral Acumulado</p>
+            </div>
+            <div class="pt-2 border-t border-slate-800/80 space-y-1 text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 flex items-center space-x-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rose-400 inline-block"></span>
+                  <span>Realizado (Pago):</span>
+                </span>
+                <strong id="exp-despesas-pagas" class="text-rose-400 font-semibold">R$ 0,00</strong>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 flex items-center space-x-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>
+                  <span>Parcial a Pagar:</span>
+                </span>
+                <strong id="exp-despesas-pendentes" class="text-amber-400 font-semibold">R$ 0,00</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card Saldo Líquido -->
+          <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400 font-semibold uppercase flex items-center space-x-1">
+                <i data-lucide="scale" class="w-3.5 h-3.5 text-blue-400"></i>
+                <span>Balanço & Saldo</span>
+              </span>
+              <span id="exp-badge-saldo" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Previsto</span>
+            </div>
+            <div>
+              <p id="exp-saldo-liquido" class="text-2xl font-black text-emerald-400">R$ 0,00</p>
+              <p class="text-[11px] text-slate-400 font-medium mt-0.5">Saldo Final Acumulado</p>
+            </div>
+            <div class="pt-2 border-t border-slate-800/80 space-y-1 text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 flex items-center space-x-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+                  <span>Saldo em Conta (Realizado):</span>
+                </span>
+                <strong id="exp-saldo-realizado" class="text-emerald-400 font-semibold">R$ 0,00</strong>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 flex items-center space-x-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block"></span>
+                  <span>Diferença a Liquidar:</span>
+                </span>
+                <strong id="exp-saldo-liquidar" class="text-slate-300 font-semibold">R$ 0,00</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtros de Período, Busca, Tipo, Status, Categoria e Método -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+          <select id="trans-filter-periodo" onchange="App.handlePeriodFilter(this.value)" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-emerald-400 font-bold focus:outline-none focus:border-emerald-500">
+            <option value="mes">📅 Mês Selecionado</option>
+            <option value="todos">🌐 Todos os Meses (Ver Tudo)</option>
+          </select>
+          <div class="relative">
+            <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5"></i>
+            <input type="text" id="trans-search" oninput="App.renderExpenses()" placeholder="Buscar por descrição..." class="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+          </div>
+          <select id="trans-filter-type" onchange="App.renderExpenses()" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+            <option value="todos">Todos os Tipos (Receitas/Despesas)</option>
+            <option value="despesa">Somente Despesas</option>
+            <option value="receita">Somente Receitas</option>
+          </select>
+          <select id="trans-filter-status" onchange="App.renderExpenses()" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+            <option value="todos">Todos os Status</option>
+            <option value="pago">✓ Somente Pagos / Recebidos</option>
+            <option value="pendente">⏳ Somente Pendentes (A Pagar/Receber)</option>
+          </select>
+          <select id="trans-filter-cat" onchange="App.renderExpenses()" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+            <option value="todos">Todas as Categorias</option>
+            <option value="Alimentação">Alimentação</option>
+            <option value="Moradia">Moradia</option>
+            <option value="Transporte">Transporte</option>
+            <option value="Lazer">Lazer</option>
+            <option value="Saúde">Saúde</option>
+            <option value="Educação">Educação</option>
+            <option value="Serviços">Serviços</option>
+            <option value="Salário">Salário</option>
+            <option value="Freelance">Freelance</option>
+            <option value="Outros">Outros</option>
+          </select>
+          <select id="trans-filter-metodo" onchange="App.renderExpenses()" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+            <option value="todos">Todas Formas de Pagamento</option>
+            <option value="Pix">Pix</option>
+            <option value="Cartão de Crédito">Cartão de Crédito</option>
+            <option value="Cartão de Débito">Cartão de Débito</option>
+            <option value="Dinheiro">Dinheiro</option>
+            <option value="Boleto">Boleto</option>
+            <option value="Transferência">Transferência</option>
+          </select>
+        </div>
+
+        <!-- Lista de Transações -->
+        <div id="expenses-list-container">
+          <!-- Injetado via JavaScript -->
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- SEÇÃO: METAS DE QUITAÇÃO DE DÍVIDAS & FINANCIAMENTOS -->
+        <!-- ========================================================================= -->
+        <div class="p-6 md:p-8 rounded-3xl bg-slate-900/80 border border-slate-800/80 space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <div class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 text-xs font-bold mb-2 border border-rose-500/20">
+                <i data-lucide="target" class="w-3.5 h-3.5"></i>
+                <span>Metas de Quitação</span>
+              </div>
+              <h3 class="text-xl font-extrabold text-white">Quitação de Dívidas, Financiamentos e Empréstimos</h3>
+              <p class="text-xs text-slate-400 mt-0.5">Acompanhe amortizações e veja seu progresso até zerar cada pendência financeira</p>
+            </div>
+            <button onclick="App.openDebtModal()" class="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center justify-center space-x-1.5 shadow-lg shadow-rose-600/20 transition">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>Nova Meta de Quitação</span>
+            </button>
+          </div>
+
+          <!-- Resumo Geral das Dívidas -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
+              <span class="text-[11px] text-slate-400 font-semibold uppercase">Total Inicial</span>
+              <p id="debt-resumo-total" class="text-lg font-bold text-white mt-1">R$ 0,00</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
+              <span class="text-[11px] text-slate-400 font-semibold uppercase">Já Quitado</span>
+              <p id="debt-resumo-pago" class="text-lg font-bold text-emerald-400 mt-1">R$ 0,00</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
+              <span class="text-[11px] text-slate-400 font-semibold uppercase">Saldo Devedor</span>
+              <p id="debt-resumo-restante" class="text-lg font-bold text-rose-400 mt-1">R$ 0,00</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
+              <span class="text-[11px] text-slate-400 font-semibold uppercase">Progresso Geral</span>
+              <p id="debt-resumo-pct" class="text-lg font-bold text-blue-400 mt-1">0%</p>
+            </div>
+          </div>
+
+          <!-- Lista de Metas de Quitação -->
+          <div id="debts-list-container" class="space-y-3">
+            <!-- Injetado dinamicamente via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- ABA 3: RESERVA DE EMERGÊNCIA -->
+      <!-- ========================================================================= -->
+      <section id="tab-reserva" class="tab-content hidden space-y-6">
+        <!-- Card Principal com Progresso da Reserva -->
+        <div class="p-6 md:p-8 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-850 border border-slate-800 shadow-xl relative overflow-hidden">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div>
+              <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-bold mb-3 border border-blue-500/20">
+                <i data-lucide="shield" class="w-3.5 h-3.5"></i>
+                <span>Segurança Financeira</span>
+              </div>
+              <h2 class="text-2xl md:text-3xl font-black text-white">Reserva de Emergência</h2>
+              <p class="text-xs text-slate-400 mt-1">Seu colchão de segurança para imprevistos e oportunidades.</p>
+              
+              <div class="mt-6 flex items-baseline space-x-3">
+                <span id="em-total-acumulado" class="text-3xl md:text-4xl font-extrabold text-blue-400">R$ 0,00</span>
+                <span class="text-sm text-slate-400">de <strong id="em-meta-valor" class="text-slate-200">R$ 0,00</strong></span>
+              </div>
+              <p id="em-meses-cobertos" class="text-xs font-semibold text-emerald-400 mt-1">0 meses de segurança garantidos</p>
+            </div>
+
+            <!-- Botões de Aporte / Resgate -->
+            <div class="flex flex-col sm:flex-row gap-2.5">
+              <button onclick="App.openEmergencyModal('Aporte')" class="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/20 transition">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                <span>Novo Aporte</span>
+              </button>
+              <button onclick="App.openEmergencyModal('Rendimento')" class="px-5 py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow-lg shadow-amber-600/20 transition">
+                <i data-lucide="trending-up" class="w-4 h-4"></i>
+                <span>Registrar Rendimento</span>
+              </button>
+              <button onclick="App.openEmergencyModal('Resgate')" class="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center space-x-2 transition border border-slate-700">
+                <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                <span>Resgatar</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Barra de Progresso Ampla -->
+          <div class="mt-8 pt-6 border-t border-slate-800/80">
+            <div class="flex items-center justify-between text-xs text-slate-300 font-bold mb-2">
+              <span id="em-quanto-falta">Calculando meta...</span>
+              <span id="em-progress-pct" class="text-blue-400 text-sm">0%</span>
+            </div>
+            <div class="w-full h-3.5 rounded-full bg-slate-800 overflow-hidden p-0.5 border border-slate-700/60">
+              <div id="em-progress-bar" class="h-full bg-gradient-to-r from-blue-500 to-teal-400 rounded-full transition-all duration-700" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Métricas Rápidas da Reserva -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+            <span class="text-xs text-slate-400 font-semibold uppercase">Total Aportado</span>
+            <p id="em-total-aportes" class="text-lg font-bold text-white mt-1">R$ 0,00</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+            <span class="text-xs text-slate-400 font-semibold uppercase">Rendimentos Ganhos</span>
+            <p id="em-total-rendimentos" class="text-lg font-bold text-amber-400 mt-1">R$ 0,00</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+            <span class="text-xs text-slate-400 font-semibold uppercase">Total Resgatado</span>
+            <p id="em-total-resgates" class="text-lg font-bold text-rose-400 mt-1">R$ 0,00</p>
+          </div>
+        </div>
+
+        <!-- Histórico de Movimentações da Reserva -->
+        <div class="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/80 space-y-4">
+          <h3 class="font-bold text-white text-base">Histórico de Aportes & Rendimentos</h3>
+          <div id="em-history-list" class="space-y-2">
+            <!-- Injetado via JavaScript -->
+          </div>
+        </div>
+
+        <!-- Simulador de Conclusão da Reserva -->
+        <div class="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/80 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-white text-base flex items-center space-x-2">
+              <i data-lucide="clock" class="w-4 h-4 text-blue-400"></i>
+              <span>Simulador de Tempo até a Meta</span>
+            </h3>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Se eu guardar por mês (R$):</label>
+              <input type="number" id="sim-aporte-mes" value="1000" oninput="App.simulateEmergency()" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-bold text-white focus:outline-none focus:border-blue-500">
+            </div>
+            <div class="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+              <span class="text-xs text-slate-400">Tempo estimado:</span>
+              <p id="sim-resultado-meses" class="text-base font-extrabold text-blue-400 mt-0.5">Calculando...</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- ABA 4: INVESTIMENTOS & PROVENTOS -->
+      <!-- ========================================================================= -->
+      <section id="tab-investimentos" class="tab-content hidden space-y-6">
+        <!-- Top Banner Investimentos -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 rounded-3xl bg-slate-900/80 border border-slate-800/80">
+          <div>
+            <h2 class="text-xl font-extrabold text-white">Carteira de Investimentos</h2>
+            <p class="text-xs text-slate-400">Acompanhamento de ativos, alocação e proventos</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="App.openDividendModal()" class="px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-lg shadow-amber-600/20 transition">
+              <i data-lucide="badge-dollar-sign" class="w-3.5 h-3.5"></i>
+              <span>+ Provento</span>
+            </button>
+            <button onclick="App.openInvestmentModal()" class="px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-lg shadow-purple-600/20 transition">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              <span>Novo Ativo</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Métricas Rápidas da Carteira -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+            <span class="text-xs text-slate-400 font-semibold uppercase">Posição Atual Total</span>
+            <p id="inv-total-atual" class="text-2xl font-black text-white mt-1">R$ 0,00</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+            <span class="text-xs text-slate-400 font-semibold uppercase">Custo de Aquisição</span>
+            <p id="inv-total-investido" class="text-lg font-bold text-slate-300 mt-1">R$ 0,00</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+            <span class="text-xs text-slate-400 font-semibold uppercase">Lucro / Rentabilidade</span>
+            <p id="inv-lucro-total" class="text-lg font-bold text-emerald-400 mt-1">+ R$ 0,00 (0%)</p>
+          </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- CARD: METAS DE INVESTIMENTO & LIBERDADE FINANCEIRA -->
+        <!-- ========================================================================= -->
+        <div class="p-6 md:p-8 rounded-3xl bg-gradient-to-br from-purple-950/30 via-slate-900 to-slate-900 border border-purple-500/20 shadow-xl space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <div class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 text-xs font-bold mb-2 border border-purple-500/20">
+                <i data-lucide="target" class="w-3.5 h-3.5"></i>
+                <span>Metas de Investimento</span>
+              </div>
+              <h3 class="text-xl md:text-2xl font-black text-white">Objetivos de Liberdade Financeira</h3>
+              <p class="text-xs text-slate-400 mt-0.5">Acompanhe seu avanço em patrimônio investido, aportes mensais e proventos</p>
+            </div>
+            <button onclick="App.openInvestmentGoalsModal()" class="px-4 py-2.5 rounded-2xl bg-purple-600/30 hover:bg-purple-600 text-purple-300 hover:text-white font-bold text-xs flex items-center justify-center space-x-1.5 transition border border-purple-500/30 shadow-lg">
+              <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+              <span>Ajustar Metas</span>
+            </button>
+          </div>
+
+          <!-- 3 Metas em Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Meta 1: Patrimônio Investido -->
+            <div class="p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Patrimônio Alvo</span>
+                <span id="goal-patrimonio-pct" class="text-xs font-bold px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20">0%</span>
+              </div>
+              <p id="goal-patrimonio-atual" class="text-xl font-extrabold text-white">R$ 0,00</p>
+              <div class="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+                <div id="goal-patrimonio-bar" class="h-full bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full transition-all duration-700" style="width: 0%;"></div>
+              </div>
+              <p id="goal-patrimonio-falta" class="text-[11px] text-slate-400">Meta: R$ 100.000,00</p>
+            </div>
+
+            <!-- Meta 2: Aporte Mensal -->
+            <div class="p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Aporte Mensal</span>
+                <span id="goal-aporte-pct" class="text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">0%</span>
+              </div>
+              <p id="goal-aporte-atual" class="text-xl font-extrabold text-emerald-400">R$ 0,00</p>
+              <div class="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+                <div id="goal-aporte-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-700" style="width: 0%;"></div>
+              </div>
+              <p id="goal-aporte-falta" class="text-[11px] text-slate-400">Meta: R$ 1.500,00/mês</p>
+            </div>
+
+            <!-- Meta 3: Renda Passiva Mensal -->
+            <div class="p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Proventos / Mês</span>
+                <span id="goal-proventos-pct" class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">0%</span>
+              </div>
+              <p id="goal-proventos-atual" class="text-xl font-extrabold text-amber-400">R$ 0,00</p>
+              <div class="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+                <div id="goal-proventos-bar" class="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full transition-all duration-700" style="width: 0%;"></div>
+              </div>
+              <p id="goal-proventos-falta" class="text-[11px] text-slate-400">Meta: R$ 500,00/mês</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráfico de Alocação de Ativos -->
+        <div class="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/80">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="font-bold text-white text-base">Alocação de Ativos</h3>
+              <p class="text-xs text-slate-400">Distribuição entre Renda Fixa, Ações, FIIs, Cripto e Outros</p>
+            </div>
+          </div>
+          <div class="relative h-60 w-full">
+            <canvas id="chart-investment-allocation"></canvas>
+          </div>
+        </div>
+
+        <!-- Lista de Ativos Cadastrados -->
+        <div class="space-y-3">
+          <h3 class="font-bold text-white text-base">Seus Ativos</h3>
+          <div id="investments-list-container">
+            <!-- Injetado via JavaScript -->
+          </div>
+        </div>
+
+        <!-- Proventos e Dividendos -->
+        <div class="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/80 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-bold text-white text-base">Proventos & Dividendos Recebidos</h3>
+              <p class="text-xs text-slate-400">Rendimentos passivos da carteira</p>
+            </div>
+            <button onclick="App.openDividendModal()" class="text-xs font-bold text-amber-400 hover:text-amber-300">+ Registrar</button>
+          </div>
+          <div id="inv-dividends-list" class="space-y-2">
+            <!-- Injetado via JavaScript -->
+          </div>
+        </div>
+
+        <!-- Card: Liberdade Financeira (Regra dos 4%) -->
+        <div class="p-6 md:p-8 rounded-3xl bg-gradient-to-br from-purple-950/40 via-slate-900 to-slate-900 border border-purple-500/20 shadow-xl space-y-4">
+          <div class="flex items-center space-x-2 px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 text-xs font-bold w-fit border border-purple-500/20">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+            <span>Meta de Longo Prazo</span>
+          </div>
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h3 class="text-xl font-black text-white">Independência Financeira (Regra dos 4%)</h3>
+              <p class="text-xs text-slate-400 mt-1">Patrimônio necessário para que os rendimentos cubram 100% do seu custo de vida.</p>
+            </div>
+            <div class="text-right">
+              <span class="text-xs text-slate-400">Meta Estimada (25x custo anual):</span>
+              <p id="fire-meta-total" class="text-2xl font-black text-purple-400">R$ 0,00</p>
+            </div>
+          </div>
+          <div class="pt-2">
+            <div class="flex items-center justify-between text-xs text-slate-300 font-bold mb-1.5">
+              <span>Progresso Atual:</span>
+              <span id="fire-pct" class="text-purple-400 font-extrabold text-sm">0%</span>
+            </div>
+            <div class="w-full h-3 rounded-full bg-slate-800 overflow-hidden">
+              <div id="fire-progress-bar" class="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-700" style="width: 0%;"></div>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-800/80">
+            <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400">Renda Passiva Segura com seu Patrimônio:</span>
+              <p id="fire-renda-atual" class="text-sm font-extrabold text-emerald-400 mt-0.5">R$ 0,00/mês</p>
+            </div>
+            <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+              <span class="text-[11px] text-slate-400">Quanto falta acumular:</span>
+              <p id="fire-falta-acumular" class="text-sm font-extrabold text-slate-200 mt-0.5">R$ 0,00</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- ABA 5: CONFIGURAÇÕES & GOOGLE SHEETS -->
+      <!-- ========================================================================= -->
+      <section id="tab-config" class="tab-content hidden space-y-6">
+        <div class="p-6 md:p-8 rounded-3xl bg-slate-900/80 border border-slate-800/80 space-y-6">
+          <div>
+            <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold mb-2 border border-emerald-500/20">
+              <i data-lucide="cloud" class="w-3.5 h-3.5"></i>
+              <span>Google Sheets Database</span>
+            </div>
+            <h2 class="text-2xl font-black text-white">Conexão com Google Sheets</h2>
+            <p class="text-xs text-slate-400 mt-1">Conecte sua planilha Google para salvar todos os dados na nuvem com segurança.</p>
+          </div>
+
+          <!-- Formulário de Conexão -->
+          <div class="space-y-4 pt-4 border-t border-slate-800">
+            <div>
+              <label class="block text-xs font-bold text-slate-300 uppercase mb-1.5">URL da Web App do Google Apps Script:</label>
+              <input type="url" id="cfg-sheets-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500 font-mono">
+              <p class="text-[11px] text-slate-500 mt-1">URL gerada ao publicar o script na sua planilha Google como Aplicativo da Web.</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+              <button onclick="App.saveSettingsFromForm()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition">
+                Salvar URL
+              </button>
+              <button id="btn-test-sheets" onclick="App.testSheetsConnection()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-200 font-bold text-xs rounded-xl transition border border-slate-700 flex items-center space-x-1.5">
+                <span>Testar Conexão</span>
+              </button>
+              <button onclick="App.pushAllToSheets()" class="px-5 py-2.5 bg-blue-600/80 hover:bg-blue-600 text-white font-bold text-xs rounded-xl transition flex items-center space-x-1.5">
+                <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                <span>Enviar Dados Locais p/ Planilha</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Metas Financeiras & Investimentos -->
+          <div class="space-y-4 pt-6 border-t border-slate-800">
+            <h3 class="text-base font-bold text-white">Metas de Reserva & Investimentos</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1">Meta da Reserva (R$):</label>
+                <input type="number" id="cfg-meta-reserva" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1">Custo Fixo Mensal (R$):</label>
+                <input type="number" id="cfg-custo-fixo" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1">Meta Patrimônio Alvo (R$):</label>
+                <input type="number" id="cfg-meta-investimento" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-purple-500">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1">Meta Aporte Mensal (R$):</label>
+                <input type="number" id="cfg-meta-aporte" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-purple-500">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1">Meta Renda Passiva / Mês (R$):</label>
+                <input type="number" id="cfg-meta-renda" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-purple-500">
+              </div>
+            </div>
+            <button onclick="App.saveSettingsFromForm()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition border border-slate-700">
+              Salvar Metas
+            </button>
+          </div>
+
+          <!-- Guia Rápido de Configuração Passo a Passo -->
+          <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+            <h4 class="text-sm font-bold text-emerald-400 flex items-center space-x-1.5">
+              <i data-lucide="help-circle" class="w-4 h-4"></i>
+              <span>Como configurar sua Planilha Google em 2 minutos:</span>
+            </h4>
+            <ol class="text-xs text-slate-300 space-y-2 list-decimal list-inside leading-relaxed">
+              <li>Crie uma nova planilha em branco no seu Google Drive (<a href="https://sheets.new" target="_blank" class="text-emerald-400 underline font-semibold">sheets.new</a>).</li>
+              <li>No menu superior, clique em <strong>Extensões &gt; Apps Script</strong>.</li>
+              <li>Apague o código padrão que estiver lá e cole todo o conteúdo do arquivo <code class="text-emerald-300 font-mono bg-slate-800 px-1.5 py-0.5 rounded">google-apps-script/Codigo.gs</code> que criamos no projeto.</li>
+              <li>Clique no botão azul <strong>Implantar &gt; Nova implantação</strong> (Deploy &gt; New deployment).</li>
+              <li>Selecione o tipo <strong>Aplicativo da Web</strong> (Web app).</li>
+              <li>No campo <em>"Quem pode acessar"</em> (Who has access), selecione <strong>Qualquer pessoa</strong> (Anyone).</li>
+              <li>Clique em <strong>Implantar</strong>, autorize as permissões da sua conta Google e copie a <strong>URL do aplicativo da Web</strong> gerada.</li>
+              <li>Cole a URL acima no campo deste aplicativo e clique em <strong>Salvar URL</strong>! Pronto!</li>
+            </ol>
+          </div>
+
+          <!-- Backup & Segurança de Dados -->
+          <div class="space-y-4 pt-6 border-t border-slate-800">
+            <h3 class="text-base font-bold text-white">Backup & Segurança Local</h3>
+            <p class="text-xs text-slate-400">Você pode baixar seus dados a qualquer momento para ter uma cópia de segurança em arquivo JSON no seu computador.</p>
+            <div class="flex flex-wrap items-center gap-3">
+              <button onclick="App.downloadBackup()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition border border-slate-700 flex items-center space-x-1.5">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Baixar Backup (JSON)</span>
+              </button>
+              <button onclick="App.triggerRestore()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition border border-slate-700 flex items-center space-x-1.5">
+                <i data-lucide="upload" class="w-4 h-4"></i>
+                <span>Restaurar Backup</span>
+              </button>
+              <input type="file" id="file-restore-input" onchange="App.handleFileRestore(event)" accept=".json" class="hidden">
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- BOTTOM NAVIGATION BAR (MOBILE) -->
+  <!-- ========================================================================= -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800/80 px-2 py-2 flex items-center justify-around">
+    <button data-tab="dashboard" class="flex flex-col items-center py-1 px-2 text-emerald-400 font-semibold transition">
+      <i data-lucide="layout-dashboard" class="w-5 h-5 mb-0.5"></i>
+      <span class="text-[10px]">Início</span>
+    </button>
+    <button data-tab="despesas" class="flex flex-col items-center py-1 px-2 text-slate-400 transition">
+      <i data-lucide="receipt" class="w-5 h-5 mb-0.5"></i>
+      <span class="text-[10px]">Despesas</span>
+    </button>
+    <!-- Botão Central Adicionar -->
+    <button onclick="App.openTransactionModal('despesa')" class="-mt-6 w-12 h-12 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-600/40 active:scale-95 transition">
+      <i data-lucide="plus" class="w-6 h-6"></i>
+    </button>
+    <button data-tab="reserva" class="flex flex-col items-center py-1 px-2 text-slate-400 transition">
+      <i data-lucide="shield-check" class="w-5 h-5 mb-0.5"></i>
+      <span class="text-[10px]">Reserva</span>
+    </button>
+    <button data-tab="investimentos" class="flex flex-col items-center py-1 px-2 text-slate-400 transition">
+      <i data-lucide="pie-chart" class="w-5 h-5 mb-0.5"></i>
+      <span class="text-[10px]">Investir</span>
+    </button>
+  </nav>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: NOVA TRANSAÇÃO -->
+  <!-- ========================================================================= -->
+  <div id="modal-transaction" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-white">Nova Transação</h3>
+        <button onclick="App.closeModal('modal-transaction')" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="App.handleSaveTransaction(event)" class="space-y-4">
+        <input type="hidden" id="trans-id">
+        <input type="hidden" id="trans-tipo" value="despesa">
+
+        <!-- Alternador Tipo (Despesa / Receita) -->
+        <div class="grid grid-cols-2 gap-2 p-1 bg-slate-950 rounded-2xl border border-slate-800">
+          <button type="button" data-type="despesa" class="trans-type-btn py-2.5 rounded-xl font-bold text-xs bg-rose-600 text-white transition flex items-center justify-center space-x-1.5">
+            <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+            <span>Despesa</span>
+          </button>
+          <button type="button" data-type="receita" class="trans-type-btn py-2.5 rounded-xl font-bold text-xs bg-slate-800 text-slate-400 transition flex items-center justify-center space-x-1.5">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>Receita</span>
+          </button>
+        </div>
+
+        <!-- Valor -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Valor (R$)*</label>
+          <div class="relative">
+            <span class="absolute left-4 top-3 text-sm font-bold text-slate-400">R$</span>
+            <input type="number" step="0.01" id="trans-valor" required placeholder="0,00" class="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-lg font-bold text-white focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <!-- Descrição -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Descrição</label>
+          <input type="text" id="trans-descricao" placeholder="Ex: Supermercado, Aluguel, Salário..." class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <!-- Categoria e Data -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Categoria</label>
+            <select id="trans-categoria" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-emerald-500">
+              <!-- Injetado dinamicamente -->
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Data</label>
+            <input type="date" id="trans-data" required class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <!-- Método de Pagamento e Status -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Forma de Pagamento</label>
+            <select id="trans-metodo" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-emerald-500">
+              <option value="Pix">Pix</option>
+              <option value="Cartão de Crédito">Cartão de Crédito</option>
+              <option value="Cartão de Débito">Cartão de Débito</option>
+              <option value="Dinheiro">Dinheiro</option>
+              <option value="Boleto">Boleto</option>
+              <option value="Transferência">Transferência</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Situação / Pagamento</label>
+            <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-950 rounded-2xl border border-slate-800">
+              <button type="button" id="trans-btn-status-pago" onclick="App.setModalTransactionStatus('pago')" class="py-1.5 rounded-xl font-bold text-xs bg-emerald-600 text-white transition flex items-center justify-center space-x-1">
+                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                <span id="trans-lbl-status-pago">Já Pago</span>
+              </button>
+              <button type="button" id="trans-btn-status-pendente" onclick="App.setModalTransactionStatus('pendente')" class="py-1.5 rounded-xl font-bold text-xs bg-slate-800 text-slate-400 transition flex items-center justify-center space-x-1">
+                <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                <span id="trans-lbl-status-pendente">A Pagar</span>
+              </button>
+            </div>
+            <input type="hidden" id="trans-status" value="pago">
+          </div>
+        </div>
+
+        <!-- Opções de Recorrência e Parcelamento -->
+        <div class="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-slate-300 flex items-center space-x-1.5">
+              <i data-lucide="repeat" class="w-3.5 h-3.5 text-blue-400"></i>
+              <span>Recorrência / Parcelas</span>
+            </label>
+            <select id="trans-repeticao-tipo" onchange="App.toggleRepeticaoOptions(this.value)" class="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500">
+              <option value="unica">Lançamento Único</option>
+              <option value="fixa">🔁 Recorrente / Fixa (Mensal)</option>
+              <option value="parcelada">💳 Compra Parcelada</option>
+            </select>
+          </div>
+
+          <!-- Opções dinâmicas para Recorrência / Parcelamento -->
+          <div id="trans-repeticao-detalhes" class="hidden pt-2 border-t border-slate-800/80 space-y-2.5">
+            <div class="grid grid-cols-2 gap-3 items-center">
+              <div>
+                <label id="trans-lbl-qtd" class="block text-[11px] font-semibold text-slate-400 mb-1">Qtd de Meses / Parcelas:</label>
+                <input type="number" id="trans-repeticao-qtd" min="2" max="60" value="12" oninput="App.updateRepeticaoResumo()" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-blue-500">
+              </div>
+              <div id="trans-box-valor-modo">
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">O valor digitado acima é:</label>
+                <select id="trans-valor-modo" onchange="App.updateRepeticaoResumo()" class="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none">
+                  <option value="parcela">De cada parcela</option>
+                  <option value="total">Valor total da compra</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Checkbox inteligente para 1ª parcela paga e demais pendentes -->
+            <div id="trans-box-primeira-paga" class="pt-1">
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="trans-primeira-paga" checked class="w-4 h-4 rounded text-emerald-600 bg-slate-900 border-slate-700 focus:ring-0">
+                <span id="trans-lbl-primeira-paga" class="text-[11px] text-slate-300">Marcar a 1ª parcela como Paga agora e as demais como Pendentes</span>
+              </label>
+            </div>
+
+            <p id="trans-resumo-repeticao" class="text-[11px] text-blue-400 font-medium"></p>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-emerald-600/30 transition">
+          Salvar Transação
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: RESERVA DE EMERGÊNCIA (APORTE / RESGATE) -->
+  <!-- ========================================================================= -->
+  <div id="modal-emergency" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-white">Movimentar Reserva</h3>
+        <button onclick="App.closeModal('modal-emergency')" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="App.handleSaveEmergency(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Tipo de Movimentação</label>
+          <select id="em-form-tipo" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-blue-500">
+            <option value="Aporte">Aporte (+ Guardar Dinheiro)</option>
+            <option value="Rendimento">Rendimento Líquido (+ Juros/CDI)</option>
+            <option value="Resgate">Resgate (- Retirar Dinheiro)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Valor (R$)*</label>
+          <div class="relative">
+            <span class="absolute left-4 top-3 text-sm font-bold text-slate-400">R$</span>
+            <input type="number" step="0.01" id="em-form-valor" required placeholder="0,00" class="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-lg font-bold text-white focus:outline-none focus:border-blue-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Instituição</label>
+            <input type="text" id="em-form-inst" placeholder="Ex: Tesouro Selic, Nubank" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Data</label>
+            <input type="date" id="em-form-data" required class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-blue-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Observação (opcional)</label>
+          <input type="text" id="em-form-obs" placeholder="Ex: Aporte mensal, rendimento CDI..." class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-blue-500">
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-blue-600/30 transition">
+          Salvar na Reserva
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: NOVO INVESTIMENTO -->
+  <!-- ========================================================================= -->
+  <div id="modal-investment" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-white">Cadastrar / Atualizar Ativo</h3>
+        <button onclick="App.closeModal('modal-investment')" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="App.handleSaveInvestment(event)" class="space-y-4">
+        <input type="hidden" id="inv-form-id">
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Ticker / Código*</label>
+            <input type="text" id="inv-form-ticker" required placeholder="Ex: PETR4, HGLG11" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs font-bold uppercase text-white focus:outline-none focus:border-purple-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Classe de Ativo</label>
+            <select id="inv-form-classe" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-purple-500">
+              <option value="Ações">Ações (Brasil)</option>
+              <option value="FIIs">Fundos Imobiliários (FIIs)</option>
+              <option value="Renda Fixa">Renda Fixa (CDB, LCI, Tesouro)</option>
+              <option value="Internacional">Internacional / BDRs</option>
+              <option value="Cripto">Criptomoedas</option>
+              <option value="Outros">Outros</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Nome / Descrição</label>
+          <input type="text" id="inv-form-nome" placeholder="Ex: Petrobras PN, CSHG Logística" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-purple-500">
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Quantidade*</label>
+            <input type="number" step="any" id="inv-form-qtd" required placeholder="10" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-purple-500">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Preço Médio*</label>
+            <input type="number" step="any" id="inv-form-pm" required placeholder="32.50" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-purple-500">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Preço Atual</label>
+            <input type="number" step="any" id="inv-form-pa" placeholder="36.00" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-purple-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Corretora / Instituição</label>
+          <input type="text" id="inv-form-inst" placeholder="Ex: XP, NuInvest, Inter, Binance" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-purple-500">
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-purple-600/30 transition">
+          Salvar na Carteira
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: REGISTRAR PROVENTO / DIVIDENDO -->
+  <!-- ========================================================================= -->
+  <div id="modal-dividend" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-white">Registrar Dividendo / Rendimento</h3>
+        <button onclick="App.closeModal('modal-dividend')" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="App.handleSaveDividend(event)" class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Ativo / Ticker*</label>
+            <input type="text" id="div-form-ativo" required placeholder="Ex: HGLG11, ITUB4" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs font-bold uppercase text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Tipo</label>
+            <select id="div-form-tipo" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-amber-500">
+              <option value="Dividendo">Dividendo</option>
+              <option value="JCP">Juros sobre Capital Próprio (JCP)</option>
+              <option value="Rendimento">Rendimento de FII</option>
+              <option value="Amortização">Amortização</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Valor Total Recebido (R$)*</label>
+          <div class="relative">
+            <span class="absolute left-4 top-3 text-sm font-bold text-slate-400">R$</span>
+            <input type="number" step="0.01" id="div-form-valor" required placeholder="0,00" class="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-lg font-bold text-white focus:outline-none focus:border-amber-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Data de Pagamento</label>
+          <input type="date" id="div-form-data" required class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-amber-500">
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-amber-600/30 transition">
+          Registrar Provento
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: NOVA / EDITAR META DE QUITAÇÃO (DÍVIDAS) -->
+  <!-- ========================================================================= -->
+  <div id="modal-debt" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+      <div class="flex items-center justify-between">
+        <h3 id="debt-modal-title" class="text-lg font-bold text-white">Nova Meta de Quitação</h3>
+        <button onclick="App.closeModal('modal-debt')" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="App.handleSaveDebt(event)" class="space-y-4">
+        <input type="hidden" id="debt-form-id">
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Nome da Dívida / Financiamento*</label>
+          <input type="text" id="debt-form-nome" required placeholder="Ex: Financiamento Carro, Empréstimo Caixa" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-rose-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Instituição / Banco</label>
+            <input type="text" id="debt-form-inst" placeholder="Ex: Santander, Nubank" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-rose-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Data Limite / Alvo</label>
+            <input type="date" id="debt-form-data-limite" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-rose-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Valor Total (R$)*</label>
+            <input type="number" step="0.01" id="debt-form-total" required placeholder="10000" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-rose-500">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Já Quitado (R$)</label>
+            <input type="number" step="0.01" id="debt-form-pago" placeholder="0" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-emerald-400 focus:outline-none focus:border-rose-500">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Parcela Mensal</label>
+            <input type="number" step="0.01" id="debt-form-parcela" placeholder="850" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-rose-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Observação (opcional)</label>
+          <input type="text" id="debt-form-obs" placeholder="Ex: Taxa fixa 1.2% a.m., faltam 10 parcelas" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-rose-500">
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-rose-600/30 transition">
+          Salvar Meta de Quitação
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: AMORTIZAR / DAR BAIXA EM DÍVIDA -->
+  <!-- ========================================================================= -->
+  <div id="modal-amortizar" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-white">Amortizar / Pagar Dívida</h3>
+        <button onclick="App.closeModal('modal-amortizar')" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="App.handleSaveAmortization(event)" class="space-y-4">
+        <input type="hidden" id="amort-debt-id">
+
+        <div class="p-3 bg-slate-950/60 rounded-2xl border border-slate-800">
+          <span class="text-[11px] text-slate-400 uppercase font-semibold">Meta de Quitação</span>
+          <p id="amort-debt-nome" class="text-sm font-bold text-white mt-0.5">Financiamento</p>
+          <p id="amort-debt-restante" class="text-xs text-rose-400 mt-1">Saldo Restante: R$ 0,00</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Valor do Pagamento / Amortização (R$)*</label>
+          <div class="relative">
+            <span class="absolute left-4 top-3 text-sm font-bold text-slate-400">R$</span>
+            <input type="number" step="0.01" id="amort-valor" required placeholder="0,00" class="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-lg font-bold text-white focus:outline-none focus:border-rose-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Data do Pagamento</label>
+          <input type="date" id="amort-data" required class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-rose-500">
+        </div>
+
+        <div class="flex items-center space-x-2 pt-1">
+          <input type="checkbox" id="amort-lancar-despesa" checked class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 bg-slate-950 border-slate-800">
+          <label for="amort-lancar-despesa" class="text-xs text-slate-300 font-medium">Lançar automaticamente como despesa do mês no fluxo de caixa</label>
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-emerald-600/30 transition">
+          Confirmar Amortização
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: AJUSTAR METAS DE INVESTIMENTO -->
+  <!-- ========================================================================= -->
+  <div id="modal-investment-goals" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-white">Metas de Investimento</h3>
+        <button onclick="App.closeModal('modal-investment-goals')" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="App.handleSaveInvestmentGoals(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Meta de Patrimônio Investido (R$)</label>
+          <div class="relative">
+            <span class="absolute left-4 top-2.5 text-xs font-bold text-slate-400">R$</span>
+            <input type="number" step="100" id="goal-set-patrimonio" required placeholder="100000" class="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm font-bold text-white focus:outline-none focus:border-purple-500">
+          </div>
+          <span class="text-[10px] text-slate-500">Ex: R$ 100.000 ou R$ 1.000.000 para independência financeira</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Meta de Aporte Mensal (R$)</label>
+          <div class="relative">
+            <span class="absolute left-4 top-2.5 text-xs font-bold text-slate-400">R$</span>
+            <input type="number" step="50" id="goal-set-aporte" required placeholder="1500" class="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm font-bold text-white focus:outline-none focus:border-purple-500">
+          </div>
+          <span class="text-[10px] text-slate-500">Quanto você deseja investir todo mês</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Meta de Renda Passiva / Proventos Mensais (R$)</label>
+          <div class="relative">
+            <span class="absolute left-4 top-2.5 text-xs font-bold text-slate-400">R$</span>
+            <input type="number" step="50" id="goal-set-renda" required placeholder="500" class="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm font-bold text-white focus:outline-none focus:border-purple-500">
+          </div>
+          <span class="text-[10px] text-slate-500">Ex: R$ 500,00 por mês de dividendos e juros</span>
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-purple-600/30 transition">
+          Salvar Metas de Investimento
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- Scripts da Aplicação -->
+  <script src="js/storage.js"></script>
+  <script src="js/sheets.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
+
