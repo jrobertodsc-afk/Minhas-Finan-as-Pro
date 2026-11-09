@@ -95,10 +95,12 @@ financas pessoais/
 │
 ├── index.html                   # Interface principal (SPA) com todas as abas e modais
 ├── server.cjs                   # Servidor Node.js (Porta 8085) com proxy reverso (/api/proxy)
+├── Dockerfile                   # Configuração de container para deploy na nuvem (Render, Railway)
+├── .dockerignore                # Arquivos ignorados no build do container
 ├── iniciar-app.bat              # Script inicializador Windows em 1 clique
 ├── package.json                 # Manifesto do Node.js com scripts e metadados
 ├── manifest.json                # Manifesto PWA para instalação no celular e desktop
-├── sw.js                        # Service Worker (Cache v4 e estratégias de rede)
+├── sw.js                        # Service Worker (Cache v6 e estratégias de rede)
 ├── README.md                    # Manual de instalação e primeiros passos
 ├── contexto.md                  # Este documento de contexto técnico do sistema
 │
