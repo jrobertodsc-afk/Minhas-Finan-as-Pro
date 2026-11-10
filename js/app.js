@@ -429,20 +429,19 @@ const App = {
 
     const saldoExibido = isTotal ? saldoGeral : saldoOperacionalMes;
 
-    if (elLblSaldo) elLblSaldo.textContent = isTotal ? 'Saldo Geral Acumulado' : 'Saldo Operacional Mês';
+    if (elLblSaldo) elLblSaldo.textContent = isTotal ? 'Saldo Geral Acumulado' : 'Disponível Hoje para Uso:';
     if (elSaldo) {
       elSaldo.textContent = this.formatMoney(saldoExibido);
-      elSaldo.className = `text-2xl lg:text-3xl font-extrabold ${saldoExibido >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      elSaldo.className = `text-base sm:text-lg font-black ${saldoExibido >= 0 ? 'text-purple-400' : 'text-rose-400'}`;
     }
     if (elSaldoReal) {
       elSaldoReal.textContent = this.formatMoney(saldoContaHoje);
-      elSaldoReal.className = `font-extrabold text-sm ${saldoContaHoje >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      elSaldoReal.className = `text-3xl sm:text-5xl font-black tracking-tight ${saldoContaHoje >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
     }
     if (elDespPend) elDespPend.textContent = this.formatMoney(despesasPendentesExibidas);
     if (elSaldoComp) {
-      elSaldoComp.textContent = isTotal
-        ? `No Mês Atual: ${this.formatMoney(saldoOperacionalMes)}`
-        : `Acumulado Geral: ${this.formatMoney(saldoGeral)}`;
+      elSaldoComp.textContent = this.formatMoney(saldoContaHoje);
+      elSaldoComp.className = `text-base font-bold ${saldoContaHoje >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
     }
 
     // 9. Atualiza Card 2 (Reserva)

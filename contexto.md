@@ -1,7 +1,7 @@
 # 📘 Contexto Geral do Projeto - Finanças Pro
 
 > **Data de Atualização:** Novembro de 2026  
-> **Versão da Aplicação:** 2.2.0  
+> **Versão da Aplicação:** 2.3.0  
 > **Repositório / Diretório Local:** `c:\Users\Roberto\Desktop\financas pessoais`  
 > **Repositório Remoto (GitHub):** `https://github.com/jrobertodsc-afk/Minhas-Finan-as-Pro`
 
@@ -9,10 +9,10 @@
 
 ## 1. Visão Geral do Sistema
 
-O **Finanças Pro** é um aplicativo financeiro pessoal inteligente, completo, moderno, responsivo (Desktop e Mobile) e progressivo (PWA), desenhado para proporcionar gestão de fluxo de caixa contábil integrado, reserva de emergência, metas de quitação de dívidas e acompanhamento de carteira de investimentos e proventos.
+O **Finanças Pro** é um aplicativo financeiro pessoal inteligente, coeso, moderno, responsivo (Desktop e Mobile) e progressivo (PWA), desenhado para proporcionar controle integrado de fluxo de caixa pessoal, reserva de emergência, metas de quitação de dívidas e acompanhamento de carteira de investimentos e proventos.
 
 O sistema opera com arquitetura híbrida:
-1. **Offline-First (Local):** Operação instantânea no navegador gravando em `LocalStorage` com cache gerenciado por Service Worker v8 e PWA instalável no celular e PC.
+1. **Offline-First (Local):** Operação instantânea no navegador gravando em `LocalStorage` com cache gerenciado por Service Worker v9 e PWA instalável no celular e PC.
 2. **Cloud Database (Google Sheets):** Banco de dados em nuvem estruturado em planilha do Google via Web App do Google Apps Script (`Codigo.gs`), permitindo sincronização em tempo real e relatórios nativos com gráficos na própria planilha.
 3. **Cloud Deploy (Render / Docker):** Deploy conteinerizado via Dockerfile em servidor Node.js com proxy reverso integrado.
 
@@ -29,25 +29,28 @@ O sistema opera com arquitetura híbrida:
 | **Backend Nuvem** | Google Apps Script (JavaScript V8) | API REST (`doGet` e `doPost`) integrada ao Google Sheets |
 | **Servidor Local / Nuvem** | Node.js nativo (`server.cjs`) | Servidor HTTP na porta `8085` com proxy reverso `/api/proxy` (bypass de CORS) |
 | **Deploy / Container** | Dockerfile multi-stage (`node:20-alpine`) | Implantação automática no Render a partir do branch `main` do GitHub |
-| **Offline / PWA** | Service Worker v8 (`sw.js`) + `manifest.json` + `icon.svg` | Suporte offline e instalação como aplicativo móvel/desktop |
+| **Offline / PWA** | Service Worker v9 (`sw.js`) + `manifest.json` + `icon.svg` | Suporte offline e instalação como aplicativo móvel/desktop |
 | **Segurança / Auth** | PIN / Senha criptografada (SHA-256) | Tela de bloqueio com sessão persistente no navegador |
 
 ---
 
-## 3. Módulos e Funcionalidades
+## 3. Arquitetura do Dashboard (Sem Informações Soltas)
 
-### 3.1. Painel Geral (Dashboard) Inteligente & Executivo
-* **Motor Contábil com Saldo Residual Anterior (Carryover Automático):**
-  * Saldo vindo do mês anterior é calculado e transportado automaticamente:
-    $$\text{Saldo Residual Anterior} = \sum (\text{Receitas Passadas Pagas}) - \sum (\text{Despesas Passadas Pagas})$$
-  * Destaque no topo em um **Pipeline Contábil em 4 Etapas**:
-    1. **1. Saldo Anterior (Residual):** Sobra líquida acumulada dos meses anteriores.
-    2. **2. (+) Receitas do Mês:** Total previsto com indicação de recebido vs a receber.
-    3. **3. (−) Despesas do Mês:** Total previsto com indicação de pago vs a pagar.
-    4. **4. (=) Saldo Projetado Final:** Saldo previsto para o encerramento do mês.
-* **Saldo Disponível em Conta Hoje:** Exibe com clareza o saldo real em conta no momento (Saldo Anterior + Recebido hoje − Pago hoje).
-* **Barras de Execução Financeira:** Progressos visuais com porcentagens de recebimento e pagamento do mês ativo.
-* **Cards de Indicadores de Alto Nível:**
+O Dashboard foi totalmente reestruturado em **4 blocos coesos e lógicos**:
+
+1. **Hero Card Central (Conta & Fluxo Mensal):**
+   * **Saldo Real Disponível Hoje:** Destaque visual principal em tamanho grande.
+   * **Régua Contábil Integrada:** `Saldo Anterior` ➔ `(+) Entradas` ➔ `(−) Saídas` ➔ `(=) Sobra do Mês`.
+   * **Ações Imediatas:** Botões rápidos `[+ Nova Receita]` e `[− Nova Despesa]`.
+2. **Dupla de Fluxo (Entradas vs Saídas do Mês):**
+   * Card de **Receitas Previstas**: Total, barra de progresso do recebido e valor a receber.
+   * Card de **Despesas Previstas**: Total, barra de progresso do pago e alerta de contas a pagar.
+3. **Cockpit Patrimonial (Saúde Financeira Global):**
+   * **Patrimônio Total Consolidado** com os 3 pilares unificados: `1. Saldo em Conta` + `2. Reserva de Emergência` + `3. Carteira de Ativos & Proventos`.
+4. **Análise de Gastos & Central de Movimentações:**
+   * Gráfico Donut de Despesas por Categoria (Luz, Internet, Cartão, Supermercado, etc.).
+   * Gráfico de Evolução dos Últimos Meses.
+   * Lista de movimentações com botão rápido de quitação direta (`Pagar` / `Receber`).
   * **Saldo Operacional:** Resultado do mês (Receitas − Despesas).
   * **Reserva de Emergência:** Total acumulado e barra de progresso da meta.
   * **Investimentos:** Total investido na carteira e proventos acumulados.
