@@ -801,21 +801,15 @@ const App = {
     }
 
     // Movimentações no Dashboard:
-    // Prioriza pendências herdadas de meses passados (urgentes para receber/pagar), depois as mais recentes
-    const pendingPastItems = isTotal ? [] : [...pastPendingReceitasList, ...pastPendingDespesasList].map(t => ({
-      ...t,
-      isAnteriorPendente: true
-    }));
+    // Exibe estritamente os lançamentos do mês selecionado (ou todo o histórico no modo Total)
+    const baseList = isTotal ? transactions : monthTrans;
+    const sortedRecent = [...baseList].sort((a, b) => {
+      const da = this.normalizeDate(a.data);
+      const db = this.normalizeDate(b.data);
+      return (db || '').localeCompare(da || '');
+    });
 
-    const sortedRecent = [...transactions]
-      .filter(t => !pendingPastItems.some(p => p.id === t.id))
-      .sort((a, b) => {
-        const da = this.normalizeDate(a.data);
-        const db = this.normalizeDate(b.data);
-        return (db || '').localeCompare(da || '');
-      });
-
-    const itemsToShow = [...pendingPastItems, ...sortedRecent].slice(0, 6);
+    const itemsToShow = sortedRecent.slice(0, 10);
     this.renderRecentTransactions(itemsToShow);
 
     // Gráficos do Dashboard
