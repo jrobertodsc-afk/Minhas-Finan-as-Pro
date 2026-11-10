@@ -975,10 +975,10 @@ const App = {
       ? (receitasPagas - despesasPagas)
       : (sobraCaixaPassada + receitasPagas - despesasPagas);
 
-    // Saldo Previsto no Fim do Mês (Saldo Projetado Contábil)
+    // Saldo Previsto no Fim do Mês (Saldo Projetado Contábil: Saldo Anterior + Receitas do Mês - Despesas do Mês)
     const saldoPrevisto = this.filterAllMonths
       ? (totalReceitas - totalDespesas)
-      : (sobraCaixaPassada + totalReceitas - totalDespesas);
+      : (saldoResidualAnteriorTotal + totalReceitas - totalDespesas);
 
     const saldoRealizado = receitasPagas - despesasPagas;
     const saldoLiquidar = receitasPendentes - despesasPendentes;
