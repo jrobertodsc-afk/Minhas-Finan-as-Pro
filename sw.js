@@ -1,4 +1,4 @@
-const CACHE_NAME = 'financas-pro-v17';
+const CACHE_NAME = 'financas-pro-v18';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -37,13 +37,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Network First: sempre busca a versão mais recente da nuvem; se offline, cai no cache
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).catch(() => {
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && event.request.method === 'GET') {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
-      });
-    })
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html');
+          }
+        });
+      })
   );
 });

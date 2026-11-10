@@ -113,10 +113,41 @@ const StorageService = {
     return merged;
   },
 
-  // Transações
+  // Transações com auto-deduplicação inteligente
   getTransactions() {
     const raw = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    try {
+      const list = JSON.parse(raw);
+      if (!Array.isArray(list)) return [];
+
+      // Deduplicação estrita: elimina duplicatas com mesma data, tipo, descrição e valor
+      const seen = new Set();
+      const deduped = [];
+      let hadDuplicates = false;
+
+      list.forEach(t => {
+        const d = (t.data || '').slice(0, 10);
+        const tipo = (t.tipo || '').toLowerCase();
+        const desc = (t.descricao || '').trim().toLowerCase();
+        const val = Number(t.valor || 0).toFixed(2);
+        const key = `${d}_${tipo}_${desc}_${val}`;
+
+        if (!seen.has(key)) {
+          seen.add(key);
+          deduped.push(t);
+        } else {
+          hadDuplicates = true;
+        }
+      });
+
+      if (hadDuplicates) {
+        localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(deduped));
+      }
+      return deduped;
+    } catch (e) {
+      return [];
+    }
   },
 
   saveTransaction(transaction) {

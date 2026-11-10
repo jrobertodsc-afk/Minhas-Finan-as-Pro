@@ -164,17 +164,31 @@ const SheetsService = {
               status: t.status || 'pago'
             }));
 
-          // Merge inteligente: combina dados da nuvem sem deletar lançamentos locais recentes
+          // Merge inteligente: combina dados da nuvem sem criar duplicatas por ID ou conteúdo
           const rawLocal = localStorage.getItem('financas_transacoes_v1');
           const localTrans = rawLocal ? JSON.parse(rawLocal) : [];
-          const map = new Map();
-          remoteTrans.forEach(t => map.set(t.id, t));
+          
+          const seenKeys = new Set();
+          const merged = [];
+
+          // 1. Remotas têm prioridade
+          remoteTrans.forEach(t => {
+            const dNorm = (t.data || '').slice(0, 10);
+            const key = `${dNorm}_${(t.tipo || '').toLowerCase()}_${(t.descricao || '').trim().toLowerCase()}_${Number(t.valor || 0).toFixed(2)}`;
+            seenKeys.add(key);
+            merged.push(t);
+          });
+
+          // 2. Locais que não foram sincronizadas ainda e não são duplicatas
           localTrans.forEach(t => {
-            if (!map.has(t.id)) {
-              map.set(t.id, t);
+            const dNorm = (t.data || '').slice(0, 10);
+            const key = `${dNorm}_${(t.tipo || '').toLowerCase()}_${(t.descricao || '').trim().toLowerCase()}_${Number(t.valor || 0).toFixed(2)}`;
+            if (!seenKeys.has(key) && !deletedIds.includes(t.id)) {
+              seenKeys.add(key);
+              merged.push(t);
             }
           });
-          const merged = Array.from(map.values());
+
           localStorage.setItem('financas_transacoes_v1', JSON.stringify(merged));
         }
 
