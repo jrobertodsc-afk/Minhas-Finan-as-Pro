@@ -671,7 +671,7 @@ const App = {
               <p class="text-[11px] text-slate-400">${this.formatDate(t.data)} • <span class="text-slate-300 font-medium">${t.categoria}</span></p>
             </div>
           </div>
-          <div class="flex items-center space-x-3 shrink-0">
+          <div class="flex items-center space-x-2 shrink-0">
             <div class="text-right">
               <p class="text-xs sm:text-sm font-black ${isReceita ? 'text-emerald-400' : 'text-slate-200'}">
                 ${isReceita ? '+' : '-'} ${this.formatMoney(t.valor)}
@@ -688,6 +688,12 @@ const App = {
                 ✓ ${isReceita ? 'Recebido' : 'Pago'}
               </span>
             `}
+            <button onclick="App.editTransaction('${t.id}')" title="Editar Lançamento" class="p-1.5 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition">
+              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="App.deleteTransaction('${t.id}')" title="Excluir" class="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
           </div>
         </div>
       `;
@@ -878,8 +884,25 @@ const App = {
       return;
     }
 
+    const has2027Mismatch = !this.filterAllMonths && this.currentMonth.startsWith('2026-') && transactions.some(t => {
+      const norm = this.normalizeDate(t.data);
+      return (norm || '').startsWith('2027-' + this.currentMonth.slice(5));
+    });
+
     container.innerHTML = `
       <div class="space-y-2">
+        ${has2027Mismatch ? `
+          <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs mb-3 shadow-sm">
+            <div class="flex items-center space-x-2.5 text-amber-300">
+              <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>
+              <span>Você possui lançamentos salvos com o ano <strong>2027</strong> (ex: Energia / Internet). Deseja trazê-los para <strong>${this.formatMonthName(this.currentMonth)}</strong>?</span>
+            </div>
+            <button onclick="App.fixFutureYearTransactions()" class="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl transition shrink-0 flex items-center justify-center space-x-1.5 shadow-md">
+              <i data-lucide="check" class="w-3.5 h-3.5"></i>
+              <span>Corrigir para 2026 com 1 Clique</span>
+            </button>
+          </div>
+        ` : ''}
         ${filtered.map(t => {
           const isReceita = t.tipo === 'receita';
           const isPendente = t.status === 'pendente';
@@ -933,6 +956,9 @@ const App = {
                     `}
                   </div>
                 </div>
+                <button onclick="App.editTransaction('${t.id}')" title="Editar Lançamento" class="p-2 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition">
+                  <i data-lucide="edit-3" class="w-4 h-4"></i>
+                </button>
                 <button onclick="App.deleteTransaction('${t.id}')" title="Excluir" class="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition">
                   <i data-lucide="trash-2" class="w-4 h-4"></i>
                 </button>
@@ -1537,11 +1563,22 @@ const App = {
   // MODAIS E CADASTROS
   // ------------------------------------------
   openTransactionModal(tipo = 'despesa') {
+    const title = document.getElementById('trans-modal-title');
+    if (title) title.textContent = tipo === 'receita' ? 'Nova Receita' : 'Nova Despesa';
+
     document.getElementById('trans-id').value = '';
     document.getElementById('trans-tipo').value = tipo;
     document.getElementById('trans-descricao').value = '';
     document.getElementById('trans-valor').value = '';
-    document.getElementById('trans-data').value = new Date().toISOString().slice(0, 10);
+
+    // Data padrão inteligente alinhada ao mês visualizado
+    const today = new Date();
+    const diaAtual = String(today.getDate()).padStart(2, '0');
+    let dataPadrao = today.toISOString().slice(0, 10);
+    if (this.currentMonth && /^\d{4}-\d{2}$/.test(this.currentMonth)) {
+      dataPadrao = `${this.currentMonth}-${diaAtual}`;
+    }
+    document.getElementById('trans-data').value = dataPadrao;
     document.getElementById('trans-metodo').value = 'Pix';
     this.setModalTransactionStatus('pago');
 
@@ -1572,6 +1609,63 @@ const App = {
 
     this.updateCategoryOptions(tipo);
     this.openModal('modal-transaction');
+  },
+
+  editTransaction(id) {
+    const list = window.StorageService.getTransactions();
+    const t = list.find(item => item.id === id);
+    if (!t) return;
+
+    this.openTransactionModal(t.tipo);
+    const title = document.getElementById('trans-modal-title');
+    if (title) title.textContent = 'Editar Lançamento';
+
+    document.getElementById('trans-id').value = t.id;
+    document.getElementById('trans-tipo').value = t.tipo;
+    document.getElementById('trans-descricao').value = t.descricao || '';
+    document.getElementById('trans-valor').value = t.valor || '';
+    document.getElementById('trans-data').value = this.normalizeDate(t.data);
+    document.getElementById('trans-metodo').value = t.metodo || 'Pix';
+    document.getElementById('trans-categoria').value = t.categoria;
+    this.setModalTransactionStatus(t.status || 'pago');
+
+    const repTipo = document.getElementById('trans-repeticao-tipo');
+    if (repTipo) {
+      repTipo.value = 'unica';
+      this.toggleRepeticaoOptions('unica');
+    }
+  },
+
+  fixFutureYearTransactions() {
+    const transactions = window.StorageService.getTransactions();
+    let count = 0;
+    const updated = transactions.map(t => {
+      const norm = this.normalizeDate(t.data);
+      if (norm && norm.startsWith('2027-')) {
+        count++;
+        const corrected = norm.replace(/^2027-/, '2026-');
+        return {
+          ...t,
+          data: corrected,
+          dataPagamento: t.dataPagamento ? t.dataPagamento.replace(/^2027-/, '2026-') : undefined
+        };
+      }
+      return t;
+    });
+
+    if (count > 0) {
+      localStorage.setItem('financas_pro_transactions', JSON.stringify(updated));
+      this.currentMonth = '2026-11';
+      const mSelect = document.getElementById('month-selector');
+      if (mSelect) mSelect.value = '2026-11';
+      this.render();
+      this.showToast(`✓ ${count} lançamento(s) atualizados com sucesso para Novembro de 2026!`, 'success');
+      if (window.SheetsService && window.SheetsService.isConnected()) {
+        window.SheetsService.syncAllToSheets();
+      }
+    } else {
+      this.showToast('Nenhum lançamento de 2027 encontrado.', 'info');
+    }
   },
 
   setModalTransactionStatus(status) {
