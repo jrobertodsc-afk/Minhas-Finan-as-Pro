@@ -2720,7 +2720,7 @@ const App = {
         descricao: `[Quitação] ${updated.nome}`,
         valor,
         data: window.SheetsService.normalizeDate(data),
-        categoria: 'Serviços',
+        categoria: 'Empréstimo / Financiamento',
         metodo: 'Pix',
         status: 'pago'
       };
