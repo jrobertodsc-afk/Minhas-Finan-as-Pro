@@ -7,7 +7,30 @@ const App = {
   currentMonth: new Date().toISOString().slice(0, 7), // AAAA-MM
   filterAllMonths: false,
   dashboardPeriod: 'mes', // 'mes' ou 'total'
+  dashTransFilter: 'todos', // 'todos', 'receita', 'despesa'
   charts: {},
+
+  setDashTransFilter(tipo) {
+    this.dashTransFilter = tipo || 'todos';
+    const btnTodos = document.getElementById('filter-dash-trans-todos');
+    const btnRec = document.getElementById('filter-dash-trans-receitas');
+    const btnDesp = document.getElementById('filter-dash-trans-despesas');
+
+    [btnTodos, btnRec, btnDesp].forEach(btn => {
+      if (btn) {
+        btn.classList.remove('bg-slate-800', 'text-white', 'shadow-sm');
+        btn.classList.add('text-slate-400');
+      }
+    });
+
+    const activeBtn = tipo === 'receita' ? btnRec : (tipo === 'despesa' ? btnDesp : btnTodos);
+    if (activeBtn) {
+      activeBtn.classList.remove('text-slate-400');
+      activeBtn.classList.add('bg-slate-800', 'text-white', 'shadow-sm');
+    }
+
+    this.renderDashboard();
+  },
 
   // Cores de classes de investimentos
   classColors: {
@@ -734,32 +757,74 @@ const App = {
     // 13. Orçamento Inteligente por Tetos de Categoria
     const budgetContainer = document.getElementById('dash-budget-bars');
     if (budgetContainer) {
-      const defaultBudgets = {
+      const activeTrans = isTotal ? transactions : monthTrans;
+      const spendingMap = {};
+      activeTrans.filter(t => t.tipo === 'despesa').forEach(t => {
+        const cat = (t.categoria || 'Outros').trim();
+        spendingMap[cat] = (spendingMap[cat] || 0) + Number(t.valor || 0);
+      });
+
+      const categoryDefaults = {
+        'Fatura Cartão de Crédito': 1500,
+        'Empréstimo / Financiamento': 800,
+        'Supermercado / Feira': 1200,
+        'Alimentação / Restaurante': 500,
+        'Aluguel / Condomínio': 1500,
+        'Energia Elétrica (Luz)': 250,
+        'Internet / TV / Telefone': 120,
+        'Água / Saneamento': 100,
+        'Gás': 120,
+        'Transporte / Uber': 300,
+        'Combustível': 400,
+        'Streaming / Assinaturas': 120,
+        'Farmácia / Remédios': 200,
+        'Plano de Saúde / Médico': 400,
+        'Lazer / Viagens': 300,
+        'Educação / Cursos': 300,
+        'Vestuário & Cuidados': 250,
+        'Pets': 200,
+        'Manutenção / Veículo': 300,
+        'Outros': 300,
+        // Legados
         'Alimentação': 1200,
         'Moradia': 2000,
         'Transporte': 500,
         'Lazer': 400,
         'Saúde': 300,
-        'Outros': 300
+        'Educação': 400,
+        'Serviços': 300,
+        'Vestuário': 200
       };
-      const budgets = (config.orcamentos && Object.keys(config.orcamentos).length > 0) ? config.orcamentos : defaultBudgets;
 
-      const activeTrans = isTotal ? transactions : monthTrans;
-      const spendingMap = {};
-      activeTrans.filter(t => t.tipo === 'despesa').forEach(t => {
-        const cat = t.categoria || 'Outros';
-        spendingMap[cat] = (spendingMap[cat] || 0) + Number(t.valor);
+      const userBudgets = config.orcamentos || {};
+
+      // Combina todas as categorias que possuem gastos no mês + tetos definidos pelo usuário
+      const allCategoryKeys = new Set([
+        ...Object.keys(spendingMap),
+        ...Object.keys(userBudgets)
+      ]);
+
+      // Garante categorias principais caso a lista esteja vazia ou pequena
+      if (allCategoryKeys.size < 6) {
+        ['Fatura Cartão de Crédito', 'Energia Elétrica (Luz)', 'Internet / TV / Telefone', 'Supermercado / Feira', 'Empréstimo / Financiamento', 'Outros'].forEach(c => allCategoryKeys.add(c));
+      }
+
+      // Ordenação: categorias COM GASTO REAL vêm PRIMEIRO (em ordem decrescente de valor gasto), seguidas pelas sem gasto
+      const sortedCategories = Array.from(allCategoryKeys).sort((a, b) => {
+        const spentA = spendingMap[a] || 0;
+        const spentB = spendingMap[b] || 0;
+        if (spentA > 0 || spentB > 0) {
+          return spentB - spentA;
+        }
+        return a.localeCompare(b);
       });
 
-      const budgetKeys = Object.keys(budgets);
-      budgetContainer.innerHTML = budgetKeys.map(cat => {
-        const limit = Number(budgets[cat]) || 0;
-        let spent = spendingMap[cat] || 0;
-        Object.keys(spendingMap).forEach(actualCat => {
-          if (actualCat !== cat && (actualCat.toLowerCase().includes(cat.toLowerCase()) || cat.toLowerCase().includes(actualCat.toLowerCase()))) {
-            spent += spendingMap[actualCat];
-          }
-        });
+      budgetContainer.innerHTML = sortedCategories.map(cat => {
+        const spent = spendingMap[cat] || 0;
+        let limit = Number(userBudgets[cat]) || Number(categoryDefaults[cat]);
+        if (!limit || limit <= 0) {
+          limit = Math.max(Math.ceil((spent * 1.25) / 50) * 50, 200);
+        }
 
         const pct = limit > 0 ? Math.round((spent / limit) * 100) : 0;
         const barWidth = Math.min(100, pct);
@@ -781,10 +846,10 @@ const App = {
         }
 
         return `
-          <div class="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-2">
+          <div class="p-3.5 rounded-2xl bg-slate-950/60 border ${spent > 0 ? (isOver ? 'border-rose-500/40 bg-rose-950/10' : 'border-slate-800/90') : 'border-slate-800/60 opacity-75'} space-y-2 hover:border-slate-700 transition">
             <div class="flex items-center justify-between text-xs">
-              <span class="font-bold text-slate-200">${this.escapeHtml(cat)}</span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeClass}">
+              <span class="font-bold text-slate-200 truncate pr-2" title="${this.escapeHtml(cat)}">${this.escapeHtml(cat)}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeClass} shrink-0">
                 ${badgeText}
               </span>
             </div>
@@ -792,8 +857,8 @@ const App = {
               <div class="h-full ${barColor} rounded-full transition-all duration-500" style="width: ${barWidth}%;"></div>
             </div>
             <div class="flex items-center justify-between text-[11px] text-slate-400">
-              <span>Gasto: <strong class="${isOver ? 'text-rose-400' : 'text-slate-200'}">${this.formatMoney(spent)}</strong></span>
-              <span>Teto: <strong>${this.formatMoney(limit)}</strong></span>
+              <span>Gasto: <strong class="${isOver ? 'text-rose-400' : (spent > 0 ? 'text-slate-100' : 'text-slate-400')}">${this.formatMoney(spent)}</strong></span>
+              <span>Teto: <strong class="text-slate-300">${this.formatMoney(limit)}</strong></span>
             </div>
           </div>
         `;
@@ -809,7 +874,28 @@ const App = {
       return (db || '').localeCompare(da || '');
     });
 
-    const itemsToShow = sortedRecent.slice(0, 10);
+    // Contadores para os botões de filtro rápido
+    const countTodos = sortedRecent.length;
+    const countRec = sortedRecent.filter(t => t.tipo === 'receita').length;
+    const countDesp = sortedRecent.filter(t => t.tipo === 'despesa').length;
+
+    const elBadgeTodos = document.getElementById('badge-dash-trans-todos');
+    const elBadgeRec = document.getElementById('badge-dash-trans-receitas');
+    const elBadgeDesp = document.getElementById('badge-dash-trans-despesas');
+    if (elBadgeTodos) elBadgeTodos.textContent = countTodos;
+    if (elBadgeRec) elBadgeRec.textContent = countRec;
+    if (elBadgeDesp) elBadgeDesp.textContent = countDesp;
+
+    // Filtra pela seleção de tipo (Todos, Receitas ou Despesas)
+    const currentFilter = this.dashTransFilter || 'todos';
+    let filteredTransactions = sortedRecent;
+    if (currentFilter === 'receita') {
+      filteredTransactions = sortedRecent.filter(t => t.tipo === 'receita');
+    } else if (currentFilter === 'despesa') {
+      filteredTransactions = sortedRecent.filter(t => t.tipo === 'despesa');
+    }
+
+    const itemsToShow = filteredTransactions.slice(0, 10);
     this.renderRecentTransactions(itemsToShow);
 
     // Gráficos do Dashboard
@@ -821,8 +907,13 @@ const App = {
     const container = document.getElementById('dash-recent-transactions');
     if (!container) return;
 
-    if (items.length === 0) {
-      container.innerHTML = `<div class="p-6 text-center text-slate-500 text-xs font-medium">Nenhuma movimentação registrada. Clique em "+ Nova Receita" ou "− Nova Despesa" para começar!</div>`;
+    if (!items || items.length === 0) {
+      const filter = this.dashTransFilter || 'todos';
+      let msg = 'Nenhuma movimentação registrada neste mês.';
+      if (filter === 'receita') msg = 'Nenhuma receita registrada neste mês. Clique em "+ Nova Receita" para adicionar!';
+      else if (filter === 'despesa') msg = 'Nenhuma despesa registrada neste mês. Clique em "− Nova Despesa" para adicionar!';
+
+      container.innerHTML = `<div class="p-8 text-center text-slate-500 text-xs font-medium bg-slate-950/40 rounded-2xl border border-slate-800/60">${msg}</div>`;
       return;
     }
 
@@ -830,45 +921,54 @@ const App = {
       const isReceita = t.tipo === 'receita';
       const isPendente = (t.status === 'pendente');
       const isAnterior = t.isAnteriorPendente || false;
+
+      // Destaque visual nítido separando receitas (esmeralda) e despesas (rosa/rubro)
+      const cardClasses = isReceita
+        ? 'border-l-4 border-l-emerald-500 bg-slate-900/70 border-y border-r border-slate-800/80 hover:bg-emerald-950/20'
+        : 'border-l-4 border-l-rose-500 bg-slate-900/70 border-y border-r border-slate-800/80 hover:bg-rose-950/20';
+
       return `
-        <div class="flex items-center justify-between p-3.5 rounded-2xl ${isAnterior ? 'bg-amber-950/20 border border-amber-500/30' : 'bg-slate-800/40 border border-slate-700/50'} hover:bg-slate-800/70 transition">
+        <div class="flex items-center justify-between p-3.5 rounded-2xl ${cardClasses} transition shadow-sm">
           <div class="flex items-center space-x-3 min-w-0">
-            <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${isReceita ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
+            <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${isReceita ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
               <i data-lucide="${isReceita ? 'arrow-down-left' : 'arrow-up-right'}" class="w-5 h-5"></i>
             </div>
             <div class="min-w-0">
               <div class="flex items-center space-x-2">
                 <p class="text-xs sm:text-sm font-bold text-slate-100 truncate">${this.escapeHtml(t.descricao || t.categoria)}</p>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isReceita ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
+                  ${isReceita ? 'Receita' : 'Despesa'}
+                </span>
                 ${isAnterior ? `
                   <span class="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30 whitespace-nowrap">
                     ⏳ Mês Anterior • ${isReceita ? 'A Receber' : 'A Pagar'}
                   </span>
                 ` : ''}
               </div>
-              <p class="text-[11px] text-slate-400">${this.formatDate(t.data)} • <span class="text-slate-300 font-medium">${t.categoria}</span></p>
+              <p class="text-[11px] text-slate-400 mt-0.5">${this.formatDate(t.data)} • <span class="text-slate-300 font-medium">${t.categoria}</span></p>
             </div>
           </div>
-          <div class="flex items-center space-x-2 shrink-0">
+          <div class="flex items-center space-x-2 shrink-0 ml-2">
             <div class="text-right">
-              <p class="text-xs sm:text-sm font-black ${isReceita ? 'text-emerald-400' : 'text-slate-200'}">
+              <p class="text-xs sm:text-sm font-black ${isReceita ? 'text-emerald-400' : 'text-rose-400'}">
                 ${isReceita ? '+' : '-'} ${this.formatMoney(t.valor)}
               </p>
-              <span class="text-[10px] px-2 py-0.5 rounded-full ${t.metodo ? 'bg-slate-700/80 text-slate-300' : ''}">${t.metodo || 'Geral'}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full ${t.metodo ? 'bg-slate-800 text-slate-300 border border-slate-700/60' : ''}">${t.metodo || 'Geral'}</span>
             </div>
             ${isPendente ? `
-              <button onclick="App.markAsPaid('${t.id}')" title="${isReceita ? 'Marcar como Recebido' : 'Marcar como Pago'}" class="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition flex items-center space-x-1 shadow-sm">
+              <button onclick="App.markAsPaid('${t.id}')" title="${isReceita ? 'Marcar como Recebido' : 'Marcar como Pago'}" class="px-2.5 py-1.5 rounded-xl ${isReceita ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-rose-600 hover:bg-rose-500'} text-white text-[11px] font-bold transition flex items-center space-x-1 shadow-sm">
                 <i data-lucide="check" class="w-3.5 h-3.5"></i>
                 <span class="hidden sm:inline">${isReceita ? 'Receber' : 'Pagar'}</span>
               </button>
             ` : `
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isReceita ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-300 border border-slate-700'}">
                 ✓ ${isReceita ? 'Recebido' : 'Pago'}
               </span>
             `}
-            <button onclick="App.editTransaction('${t.id}')" title="Editar Lançamento" class="p-1.5 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition">
+            <button onclick="App.editTransaction('${t.id}')" title="Editar Lançamento" class="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition">
               <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
             </button>
-            <button onclick="App.deleteTransaction('${t.id}')" title="Excluir" class="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition">
+            <button onclick="App.deleteTransaction('${t.id}')" title="Excluir" class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition">
               <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             </button>
           </div>
@@ -2699,6 +2799,99 @@ const App = {
     if (elGoalProvPct) elGoalProvPct.textContent = pctRenda + '%';
     if (elGoalProvBar) elGoalProvBar.style.width = pctRenda + '%';
     if (elGoalProvFalta) elGoalProvFalta.textContent = faltaRenda > 0 ? 'Faltam ' + this.formatMoney(faltaRenda) + ' para a meta passiva de ' + this.formatMoney(metaRenda) + '/mês' : '🎉 Meta de renda passiva mensal batida!';
+  },
+
+  // ------------------------------------------
+  // CONFIGURAÇÃO DE TETOS DE GASTOS (ORÇAMENTO)
+  // ------------------------------------------
+  openBudgetModal() {
+    const modal = document.getElementById('modal-budgets');
+    if (!modal) return;
+
+    const list = document.getElementById('budget-inputs-list');
+    if (list) {
+      const config = window.StorageService.getConfig();
+      const userBudgets = config.orcamentos || {};
+      const transactions = window.StorageService.getTransactions();
+
+      const standardCats = [
+        'Fatura Cartão de Crédito',
+        'Empréstimo / Financiamento',
+        'Energia Elétrica (Luz)',
+        'Internet / TV / Telefone',
+        'Streaming / Assinaturas',
+        'Supermercado / Feira',
+        'Alimentação / Restaurante',
+        'Aluguel / Condomínio',
+        'Transporte / Uber',
+        'Combustível',
+        'Farmácia / Remédios',
+        'Plano de Saúde / Médico',
+        'Lazer / Viagens',
+        'Educação / Cursos',
+        'Vestuário & Cuidados',
+        'Pets',
+        'Manutenção / Veículo',
+        'Água / Saneamento',
+        'Gás',
+        'Outros'
+      ];
+
+      const allCats = new Set([...standardCats, ...Object.keys(userBudgets)]);
+      transactions.filter(t => t.tipo === 'despesa' && t.categoria).forEach(t => allCats.add(t.categoria.trim()));
+
+      list.innerHTML = Array.from(allCats).map(cat => {
+        const val = userBudgets[cat] !== undefined ? userBudgets[cat] : '';
+        return `
+          <div class="flex items-center justify-between p-2.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 gap-3">
+            <span class="text-xs font-bold text-slate-200 truncate flex-1">${this.escapeHtml(cat)}</span>
+            <div class="relative w-36 shrink-0">
+              <span class="absolute left-3 top-2 text-xs font-bold text-slate-500">R$</span>
+              <input type="number" step="10" name="budget_${encodeURIComponent(cat)}" data-cat="${this.escapeHtml(cat)}" value="${val}" placeholder="Padrão" class="w-full pl-9 pr-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-emerald-500 text-right">
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    if (window.lucide) window.lucide.createIcons();
+  },
+
+  closeBudgetModal() {
+    const modal = document.getElementById('modal-budgets');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  saveBudgets(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const config = window.StorageService.getConfig();
+    const orcamentos = { ...(config.orcamentos || {}) };
+
+    const inputs = document.querySelectorAll('#budget-inputs-list input[data-cat]');
+    inputs.forEach(input => {
+      const cat = input.getAttribute('data-cat');
+      const val = parseFloat(input.value);
+      if (!isNaN(val) && val > 0) {
+        orcamentos[cat] = val;
+      } else {
+        delete orcamentos[cat];
+      }
+    });
+
+    config.orcamentos = orcamentos;
+    window.StorageService.saveConfig(config);
+
+    if (window.SheetsService && window.SheetsService.isConfigured()) {
+      window.SheetsService.saveConfigToCloud(config).catch(() => {});
+    }
+
+    this.showToast('Tetos de gastos atualizados com sucesso!', 'success');
+    this.closeBudgetModal();
+    this.renderDashboard();
   },
 
   // ------------------------------------------

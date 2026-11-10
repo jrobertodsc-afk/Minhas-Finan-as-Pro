@@ -713,7 +713,7 @@
               </div>
               <p class="text-xs text-slate-400 mt-0.5">Monitore seus limites por categoria para evitar surpresas no fim do mês</p>
             </div>
-            <button onclick="App.switchTab('config')" class="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center space-x-1.5 self-start sm:self-auto px-3.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-750 border border-slate-700/60 transition">
+            <button onclick="App.openBudgetModal()" class="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center space-x-1.5 self-start sm:self-auto px-3.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-750 border border-slate-700/60 transition">
               <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
               <span>Configurar Tetos</span>
             </button>
@@ -727,12 +727,29 @@
         <!-- 5. CENTRAL DE MOVIMENTAÇÕES & CONTAS IMEDIATAS -->
         <!-- ===================================================================== -->
         <div class="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/80 space-y-4">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
               <h3 class="font-bold text-white text-base">Movimentações do Mês</h3>
               <p class="text-xs text-slate-400">Últimos lançamentos e contas a pagar/receber</p>
             </div>
-            <button onclick="App.switchTab('despesas')" class="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center space-x-1">
+
+            <!-- Filtros Rápidos: Todos | Receitas | Despesas -->
+            <div class="flex items-center space-x-1.5 p-1 bg-slate-950/80 rounded-2xl border border-slate-800/80 text-xs self-start md:self-auto">
+              <button id="filter-dash-trans-todos" onclick="App.setDashTransFilter('todos')" class="px-3 py-1.5 rounded-xl font-bold transition bg-slate-800 text-white shadow-sm flex items-center space-x-1.5">
+                <span>Todos</span>
+                <span id="badge-dash-trans-todos" class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-700/60 text-slate-300">0</span>
+              </button>
+              <button id="filter-dash-trans-receitas" onclick="App.setDashTransFilter('receita')" class="px-3 py-1.5 rounded-xl font-bold transition text-slate-400 hover:text-white flex items-center space-x-1.5">
+                <span>🟢 Receitas</span>
+                <span id="badge-dash-trans-receitas" class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">0</span>
+              </button>
+              <button id="filter-dash-trans-despesas" onclick="App.setDashTransFilter('despesa')" class="px-3 py-1.5 rounded-xl font-bold transition text-slate-400 hover:text-white flex items-center space-x-1.5">
+                <span>🔴 Despesas</span>
+                <span id="badge-dash-trans-despesas" class="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-500/10 text-rose-400">0</span>
+              </button>
+            </div>
+
+            <button onclick="App.switchTab('despesas')" class="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center space-x-1 self-start md:self-auto">
               <span>Abrir Extrato Completo</span>
               <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
             </button>
@@ -1921,13 +1938,49 @@
     </div>
   </div>
 
+  <!-- ========================================================================= -->
+  <!-- MODAL: CONFIGURAR TETOS DE GASTOS POR CATEGORIA -->
+  <!-- ========================================================================= -->
+  <div id="modal-budgets" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
+            <i data-lucide="sliders" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Configurar Tetos de Gastos</h3>
+            <p class="text-xs text-slate-400">Defina o limite mensal máximo por categoria</p>
+          </div>
+        </div>
+        <button onclick="App.closeBudgetModal()" class="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-budgets" onsubmit="App.saveBudgets(event)" class="space-y-4 overflow-y-auto pr-1 flex-1 custom-scroll">
+        <p class="text-xs text-slate-400">Personalize o orçamento para as categorias que você mais utiliza. Valores em branco assumem o padrão inteligente do sistema.</p>
+        <div id="budget-inputs-list" class="space-y-2.5">
+          <!-- Injetado dinamicamente via JS -->
+        </div>
+        <div class="pt-3 border-t border-slate-800 flex items-center justify-end space-x-2 shrink-0">
+          <button type="button" onclick="App.closeBudgetModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-bold transition">Cancelar</button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md flex items-center space-x-1.5">
+            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+            <span>Salvar Tetos</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div id="toast-container" class="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts da Aplicação com Cache Buster -->
-  <script src="js/storage.js?v=21"></script>
-  <script src="js/sheets.js?v=21"></script>
-  <script src="js/app.js?v=21"></script>
+  <script src="js/storage.js?v=22"></script>
+  <script src="js/sheets.js?v=22"></script>
+  <script src="js/app.js?v=22"></script>
 </body>
 </html>
 
