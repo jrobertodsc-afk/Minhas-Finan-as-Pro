@@ -146,16 +146,23 @@ const SheetsService = {
         
         // Mapeia e normaliza os dados retornados
         if (d.transacoes && Array.isArray(d.transacoes)) {
-          const remoteTrans = d.transacoes.map(t => ({
-            id: t.id || 'tr_' + Math.random().toString(36).substr(2, 6),
-            data: this.normalizeDate(t.data),
-            tipo: (t.tipo || 'despesa').toLowerCase(),
-            categoria: t.categoria || 'Outros',
-            descricao: t.descricao || '',
-            valor: Number(t.valor) || 0,
-            metodo: t.metodo || 'Pix',
-            status: t.status || 'pago'
-          }));
+          let deletedIds = [];
+          try {
+            deletedIds = JSON.parse(localStorage.getItem('financas_deleted_ids_v1') || '[]');
+          } catch (e) {}
+
+          const remoteTrans = d.transacoes
+            .filter(t => !deletedIds.includes(t.id))
+            .map(t => ({
+              id: t.id || 'tr_' + Math.random().toString(36).substr(2, 6),
+              data: this.normalizeDate(t.data),
+              tipo: (t.tipo || 'despesa').toLowerCase(),
+              categoria: t.categoria || 'Outros',
+              descricao: t.descricao || '',
+              valor: Number(t.valor) || 0,
+              metodo: t.metodo || 'Pix',
+              status: t.status || 'pago'
+            }));
 
           // Merge inteligente: combina dados da nuvem sem deletar lançamentos locais recentes
           const rawLocal = localStorage.getItem('financas_transacoes_v1');

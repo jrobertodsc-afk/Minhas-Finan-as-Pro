@@ -138,6 +138,14 @@ const StorageService = {
     let list = this.getTransactions();
     list = list.filter(t => t.id !== id);
     localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(list));
+    // Registra tombstone para que sincronizações não ressuscitem a transação excluída
+    try {
+      const deleted = JSON.parse(localStorage.getItem('financas_deleted_ids_v1') || '[]');
+      if (!deleted.includes(id)) {
+        deleted.push(id);
+        localStorage.setItem('financas_deleted_ids_v1', JSON.stringify(deleted.slice(-200)));
+      }
+    } catch(e) {}
     return list;
   },
 

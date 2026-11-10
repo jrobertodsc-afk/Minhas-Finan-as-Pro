@@ -392,7 +392,7 @@ const App = {
     // 5. Reserva Total e Investimentos Total
     const totalReserva = emergencyFunds.reduce((acc, r) => {
       const val = Number(r.valor) || 0;
-      return (r.tipo === 'Resgate') ? acc - val : acc + val;
+      return ((r.tipo || '').toLowerCase() === 'resgate') ? acc - val : acc + val;
     }, 0);
 
     const totalInvestido = investments.reduce((acc, inv) => {
@@ -515,7 +515,7 @@ const App = {
     const contasSemana = transactions.filter(t => {
       if (t.tipo !== 'despesa' || t.status !== 'pendente') return false;
       const d = this.normalizeDate(t.data);
-      return (d <= daquiA7DiasISO);
+      return Boolean(d && d <= daquiA7DiasISO);
     });
     const totalRadar = contasSemana.reduce((a, t) => a + Number(t.valor), 0);
 
