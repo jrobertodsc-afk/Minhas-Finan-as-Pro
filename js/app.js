@@ -471,7 +471,115 @@ const App = {
     if (elFlowRecPct) elFlowRecPct.textContent = `${pctRec}% recebido`;
     if (elFlowDespPct) elFlowDespPct.textContent = `${pctDesp}% pago`;
 
-    // 8. Atualiza Card 1 (Saldo Operacional e Saldo em Conta)
+    // 8. Assistente Financeiro Proativo (Cockpit de Decisão Diária)
+    // 8.1 Safe-to-Spend: Limite Diário Seguro
+    const [anoCur, mesCur] = (this.currentMonth || new Date().toISOString().slice(0, 7)).split('-').map(Number);
+    const totalDiasMes = new Date(anoCur, mesCur, 0).getDate();
+    const todayDate = new Date();
+    let diaRef = 1;
+    if (todayDate.getFullYear() === anoCur && (todayDate.getMonth() + 1) === mesCur) {
+      diaRef = todayDate.getDate();
+    } else if (todayDate > new Date(anoCur, mesCur - 1, totalDiasMes)) {
+      diaRef = totalDiasMes;
+    } else {
+      diaRef = 1;
+    }
+    const diasRestantes = Math.max(1, totalDiasMes - diaRef + 1);
+    const safeSaldoDisponivel = isTotal ? saldoContaHoje : saldoProjetadoFinal;
+    const safeDaily = safeSaldoDisponivel > 0 ? (safeSaldoDisponivel / diasRestantes) : 0;
+
+    const elAssistDias = document.getElementById('dash-assist-dias-restantes');
+    const elAssistSafe = document.getElementById('dash-assist-safe-daily');
+    const elAssistSafeDesc = document.getElementById('dash-assist-safe-desc');
+
+    if (elAssistDias) elAssistDias.textContent = isTotal ? 'Todo o Período' : `${diasRestantes} dias restantes`;
+    if (elAssistSafe) {
+      elAssistSafe.textContent = this.formatMoney(safeDaily);
+      elAssistSafe.className = `text-2xl sm:text-3xl font-black ${safeDaily > 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+    if (elAssistSafeDesc) {
+      elAssistSafeDesc.textContent = isTotal
+        ? 'Média histórica diária disponível no geral.'
+        : (safeSaldoDisponivel > 0 
+            ? `Você pode gastar até ${this.formatMoney(safeDaily)}/dia até o fim do mês mantendo suas contas em dia.`
+            : `Atenção: previsão de fechamento negativa (${this.formatMoney(safeSaldoDisponivel)}). Segure novos gastos.`);
+    }
+
+    // 8.2 Radar de Contas da Semana (Próximos 7 Dias & Atrasadas)
+    const hojeISO = this.normalizeDate(todayDate.toISOString().slice(0, 10));
+    const daquiA7Dias = new Date(todayDate);
+    daquiA7Dias.setDate(todayDate.getDate() + 7);
+    const daquiA7DiasISO = this.normalizeDate(daquiA7Dias.toISOString().slice(0, 10));
+
+    const contasSemana = transactions.filter(t => {
+      if (t.tipo !== 'despesa' || t.status !== 'pendente') return false;
+      const d = this.normalizeDate(t.data);
+      return (d <= daquiA7DiasISO);
+    });
+    const totalRadar = contasSemana.reduce((a, t) => a + Number(t.valor), 0);
+
+    const elRadarBadge = document.getElementById('dash-assist-radar-badge');
+    const elRadarTotal = document.getElementById('dash-assist-radar-total');
+    const elRadarDesc = document.getElementById('dash-assist-radar-desc');
+
+    if (elRadarBadge) {
+      elRadarBadge.textContent = `${contasSemana.length} ${contasSemana.length === 1 ? 'pendência' : 'pendências'}`;
+      elRadarBadge.className = contasSemana.length > 0
+        ? 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20'
+        : 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+    }
+    if (elRadarTotal) elRadarTotal.textContent = this.formatMoney(totalRadar);
+    if (elRadarDesc) {
+      elRadarDesc.textContent = contasSemana.length > 0
+        ? `${contasSemana.length} conta(s) a pagar somando ${this.formatMoney(totalRadar)} até ${this.formatDate(daquiA7DiasISO)}.`
+        : 'Excelente! Nenhuma conta pendente para os próximos 7 dias.';
+    }
+
+    // 8.3 Termômetro de Saúde Financeira (Score 0 a 100)
+    const taxaPoupanca = receitasExibidas > 0 ? Math.max(0, Math.round(((receitasExibidas - despesasExibidas) / receitasExibidas) * 100)) : 0;
+    const debts = window.StorageService.getDebts();
+    const totalDebts = debts.reduce((a, d) => a + Number(d.valorTotal || 0), 0);
+    const pagoDebts = debts.reduce((a, d) => a + Number(d.valorPago || 0), 0);
+    const restanteDebts = Math.max(0, totalDebts - pagoDebts);
+    const pctDebts = totalDebts > 0 ? Math.min(100, Math.round((pagoDebts / totalDebts) * 100)) : 100;
+
+    let scorePoupanca = (taxaPoupanca >= 25) ? 25 : (taxaPoupanca >= 15 ? 20 : (taxaPoupanca > 0 ? 12 : 0));
+    const metaReserva = Number(config.metaReserva) || 20000;
+    const pctReserva = Math.min(100, Math.round((totalReserva / metaReserva) * 100));
+    let scoreReserva = Math.min(25, Math.round((pctReserva / 100) * 25));
+    let scoreDividas = Math.min(25, Math.round((pctDebts / 100) * 25));
+    let scoreInvest = totalInvestido > 0 ? Math.min(25, Math.max(10, Math.round((totalInvestido / 50000) * 25))) : 5;
+
+    const scoreSaude = Math.min(100, Math.max(15, scorePoupanca + scoreReserva + scoreDividas + scoreInvest));
+
+    const elScoreBadge = document.getElementById('dash-assist-score-badge');
+    const elScoreVal = document.getElementById('dash-assist-score-value');
+    const elScoreTip = document.getElementById('dash-assist-score-tip');
+
+    if (elScoreVal) elScoreVal.textContent = scoreSaude;
+    if (elScoreBadge) {
+      if (scoreSaude >= 80) {
+        elScoreBadge.textContent = 'Excelente';
+        elScoreBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+      } else if (scoreSaude >= 65) {
+        elScoreBadge.textContent = 'Saudável';
+        elScoreBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20';
+      } else if (scoreSaude >= 45) {
+        elScoreBadge.textContent = 'Equilibrado';
+        elScoreBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20';
+      } else {
+        elScoreBadge.textContent = 'Alerta';
+        elScoreBadge.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20';
+      }
+    }
+    if (elScoreTip) {
+      if (scoreSaude >= 80) elScoreTip.textContent = 'Gestão exemplar! Sobra consistente e patrimônio em alta.';
+      else if (pctReserva < 50) elScoreTip.textContent = 'Priorize reforçar sua Reserva de Emergência para imprevistos.';
+      else if (pctDebts < 50) elScoreTip.textContent = 'Foque na amortização de dívidas para diminuir o pagamento de juros.';
+      else elScoreTip.textContent = 'Controle os gastos do dia a dia para elevar sua taxa de sobra.';
+    }
+
+    // 8.4 Atualiza Card 1 (Saldo Operacional e Saldo em Conta)
     const elLblSaldo = document.getElementById('dash-label-saldo');
     const elSaldo = document.getElementById('dash-saldo-mes');
     const elSaldoReal = document.getElementById('dash-saldo-realizado');
@@ -495,27 +603,10 @@ const App = {
       elSaldoComp.className = `text-base font-bold ${saldoContaHoje >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
     }
 
-    if (elLblSaldo) elLblSaldo.textContent = isTotal ? 'Saldo Geral Acumulado' : 'Disponível Hoje para Uso:';
-    if (elSaldo) {
-      elSaldo.textContent = this.formatMoney(saldoExibido);
-      elSaldo.className = `text-base sm:text-lg font-black ${saldoExibido >= 0 ? 'text-purple-400' : 'text-rose-400'}`;
-    }
-    if (elSaldoReal) {
-      elSaldoReal.textContent = this.formatMoney(saldoContaHoje);
-      elSaldoReal.className = `text-3xl sm:text-5xl font-black tracking-tight ${saldoContaHoje >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
-    }
-    if (elDespPend) elDespPend.textContent = this.formatMoney(despesasPendentesExibidas);
-    if (elSaldoComp) {
-      elSaldoComp.textContent = this.formatMoney(saldoContaHoje);
-      elSaldoComp.className = `text-base font-bold ${saldoContaHoje >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
-    }
-
     // 9. Atualiza Card 2 (Reserva)
     const elReserva = document.getElementById('dash-total-reserva');
     if (elReserva) elReserva.textContent = this.formatMoney(totalReserva);
 
-    const metaReserva = Number(config.metaReserva) || 20000;
-    const pctReserva = Math.min(100, Math.round((totalReserva / metaReserva) * 100));
     const elPctReserva = document.getElementById('dash-pct-reserva');
     const elBarReserva = document.getElementById('dash-bar-reserva');
     if (elPctReserva) elPctReserva.textContent = `${pctReserva}% da meta`;
@@ -536,9 +627,17 @@ const App = {
         : `Total Acumulado: ${this.formatMoney(totalProventosGeral)}`;
     }
 
-    // 11. Atualiza Card 4 (Patrimônio Total)
+    // 11. Patrimônio Líquido Real (Net Worth = Ativos - Dívidas)
+    const totalAtivos = totalReserva + totalInvestido + (saldoContaHoje > 0 ? saldoContaHoje : 0);
+    const patrimonioLiquidoReal = totalAtivos - restanteDebts;
+
     const elPatrimonio = document.getElementById('dash-patrimonio-total');
-    if (elPatrimonio) elPatrimonio.textContent = this.formatMoney(patrimonioTotal);
+    if (elPatrimonio) elPatrimonio.textContent = this.formatMoney(patrimonioLiquidoReal);
+
+    const elBadgeAtivos = document.getElementById('dash-total-ativos-badge');
+    const elBadgePassivos = document.getElementById('dash-total-passivos-badge');
+    if (elBadgeAtivos) elBadgeAtivos.textContent = this.formatMoney(totalAtivos);
+    if (elBadgePassivos) elBadgePassivos.textContent = this.formatMoney(restanteDebts);
 
     // 12. Atualiza Caixas / Barras de Execução Financeira
     const elLblBoxRec = document.getElementById('dash-lbl-box-receitas');
@@ -569,7 +668,6 @@ const App = {
     if (elDespProgBar) elDespProgBar.style.width = `${pctDesp}%`;
     if (elDespProgPct) elDespProgPct.textContent = `${pctDesp}% pago`;
 
-    const taxaPoupanca = receitasExibidas > 0 ? Math.max(0, Math.round(((receitasExibidas - despesasExibidas) / receitasExibidas) * 100)) : 0;
     const sobraLiquida = receitasExibidas - despesasExibidas;
     const elTaxaPoup = document.getElementById('dash-box-taxa-poupanca');
     const elSobraLiq = document.getElementById('dash-box-sobra-liquida');
@@ -605,17 +703,81 @@ const App = {
     if (elDashGoalAporteBar) elDashGoalAporteBar.style.width = `${pctAporte}%`;
 
     // Metas de Quitação (Dashboard)
-    const debts = window.StorageService.getDebts();
-    const totalDebts = debts.reduce((a, d) => a + Number(d.valorTotal || 0), 0);
-    const pagoDebts = debts.reduce((a, d) => a + Number(d.valorPago || 0), 0);
-    const restanteDebts = Math.max(0, totalDebts - pagoDebts);
-    const pctDebts = totalDebts > 0 ? Math.min(100, Math.round((pagoDebts / totalDebts) * 100)) : 100;
     const elDashDebtPct = document.getElementById('dash-debt-pct-info');
     const elDashDebtBar = document.getElementById('dash-debt-bar');
     const elDashDebtRestante = document.getElementById('dash-debt-restante-info');
     if (elDashDebtPct) elDashDebtPct.textContent = `${pctDebts}% Quitado`;
     if (elDashDebtBar) elDashDebtBar.style.width = `${pctDebts}%`;
     if (elDashDebtRestante) elDashDebtRestante.textContent = this.formatMoney(restanteDebts);
+
+    // 13. Orçamento Inteligente por Tetos de Categoria
+    const budgetContainer = document.getElementById('dash-budget-bars');
+    if (budgetContainer) {
+      const defaultBudgets = {
+        'Alimentação': 1200,
+        'Moradia': 2000,
+        'Transporte': 500,
+        'Lazer': 400,
+        'Saúde': 300,
+        'Outros': 300
+      };
+      const budgets = (config.orcamentos && Object.keys(config.orcamentos).length > 0) ? config.orcamentos : defaultBudgets;
+
+      const activeTrans = isTotal ? transactions : monthTrans;
+      const spendingMap = {};
+      activeTrans.filter(t => t.tipo === 'despesa').forEach(t => {
+        const cat = t.categoria || 'Outros';
+        spendingMap[cat] = (spendingMap[cat] || 0) + Number(t.valor);
+      });
+
+      const budgetKeys = Object.keys(budgets);
+      budgetContainer.innerHTML = budgetKeys.map(cat => {
+        const limit = Number(budgets[cat]) || 0;
+        let spent = spendingMap[cat] || 0;
+        Object.keys(spendingMap).forEach(actualCat => {
+          if (actualCat !== cat && (actualCat.toLowerCase().includes(cat.toLowerCase()) || cat.toLowerCase().includes(actualCat.toLowerCase()))) {
+            spent += spendingMap[actualCat];
+          }
+        });
+
+        const pct = limit > 0 ? Math.round((spent / limit) * 100) : 0;
+        const barWidth = Math.min(100, pct);
+        const isOver = pct > 100;
+        const isWarning = pct >= 80 && pct <= 100;
+
+        let barColor = 'bg-emerald-500';
+        let badgeClass = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+        let badgeText = `${pct}%`;
+
+        if (isOver) {
+          barColor = 'bg-rose-500';
+          badgeClass = 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+          badgeText = `⚠️ ${pct}% Estourou`;
+        } else if (isWarning) {
+          barColor = 'bg-amber-500';
+          badgeClass = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+          badgeText = `Atenção ${pct}%`;
+        }
+
+        return `
+          <div class="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-200">${this.escapeHtml(cat)}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeClass}">
+                ${badgeText}
+              </span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+              <div class="h-full ${barColor} rounded-full transition-all duration-500" style="width: ${barWidth}%;"></div>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-slate-400">
+              <span>Gasto: <strong class="${isOver ? 'text-rose-400' : 'text-slate-200'}">${this.formatMoney(spent)}</strong></span>
+              <span>Teto: <strong>${this.formatMoney(limit)}</strong></span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
 
     // Movimentações no Dashboard:
     // Prioriza pendências herdadas de meses passados (urgentes para receber/pagar), depois as mais recentes

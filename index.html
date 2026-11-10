@@ -320,6 +320,73 @@
       <section id="tab-dashboard" class="tab-content space-y-6">
         
         <!-- ===================================================================== -->
+        <!-- ASSISTENTE PROATIVO: COCKPIT DE DECISÃO FINANCEIRA DIÁRIA -->
+        <!-- ===================================================================== -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          <!-- 1. Safe to Spend: Limite Diário Seguro -->
+          <div class="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-lg relative overflow-hidden flex flex-col justify-between space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
+                <i data-lucide="compass" class="w-4 h-4 text-emerald-400"></i>
+                <span>Gasto Diário Seguro</span>
+              </span>
+              <span id="dash-assist-dias-restantes" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60">
+                Calculando...
+              </span>
+            </div>
+            <div>
+              <p id="dash-assist-safe-daily" class="text-2xl sm:text-3xl font-black text-emerald-400">R$ 0,00</p>
+              <p id="dash-assist-safe-desc" class="text-[11px] text-slate-400 mt-1 leading-snug">
+                Limite por dia até o fim do mês sem comprometer suas contas.
+              </p>
+            </div>
+          </div>
+
+          <!-- 2. Radar de Contas da Semana (Próximos 7 Dias) -->
+          <div class="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-lg relative overflow-hidden flex flex-col justify-between space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
+                <i data-lucide="bell-ring" class="w-4 h-4 text-amber-400"></i>
+                <span>Radar da Semana</span>
+              </span>
+              <span id="dash-assist-radar-badge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                0 a vencer
+              </span>
+            </div>
+            <div>
+              <p id="dash-assist-radar-total" class="text-2xl sm:text-3xl font-black text-amber-400">R$ 0,00</p>
+              <p id="dash-assist-radar-desc" class="text-[11px] text-slate-400 mt-1 leading-snug">
+                Total de contas pendentes para os próximos 7 dias.
+              </p>
+            </div>
+          </div>
+
+          <!-- 3. Termômetro de Saúde Financeira (Score 0 a 100) -->
+          <div class="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-lg relative overflow-hidden flex flex-col justify-between space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
+                <i data-lucide="shield-check" class="w-4 h-4 text-blue-400"></i>
+                <span>Saúde Financeira</span>
+              </span>
+              <span id="dash-assist-score-badge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Excelente
+              </span>
+            </div>
+            <div>
+              <div class="flex items-baseline space-x-2">
+                <p id="dash-assist-score-value" class="text-2xl sm:text-3xl font-black text-white">85</p>
+                <span class="text-xs text-slate-400 font-bold">/ 100 pts</span>
+              </div>
+              <p id="dash-assist-score-tip" class="text-[11px] text-slate-400 mt-1 leading-snug">
+                Equilíbrio excelente entre receitas e despesas.
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ===================================================================== -->
         <!-- 1. HERO CARD: CONTA & FLUXO DO MÊS (CENTRO DE COMANDO EXECUTIVO) -->
         <!-- ===================================================================== -->
         <div class="p-6 md:p-8 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-850 border border-slate-800 shadow-2xl space-y-6 relative overflow-hidden">
@@ -513,14 +580,27 @@
                 <i data-lucide="coins" class="w-5 h-5"></i>
               </div>
               <div>
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Patrimônio Total Consolidado</h3>
+                <div class="flex items-center space-x-2">
+                  <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Patrimônio Líquido Real</h3>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ativos − Dívidas</span>
+                </div>
                 <p id="dash-patrimonio-total" class="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">R$ 0,00</p>
               </div>
             </div>
-            <div class="text-xs text-slate-400 flex items-center space-x-1.5 bg-slate-950 px-3.5 py-2 rounded-2xl border border-slate-800">
-              <i data-lucide="piggy-bank" class="w-4 h-4 text-blue-400"></i>
-              <span>Taxa de Sobra/Poupança do Mês: <strong id="dash-box-taxa-poupanca" class="text-blue-400 font-bold text-sm">0%</strong></span>
-              <span id="dash-box-sobra-liquida" class="hidden"></span>
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="text-[11px] text-slate-400 flex items-center space-x-1.5 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
+                <span class="text-slate-400">Ativos:</span>
+                <strong id="dash-total-ativos-badge" class="text-emerald-400 font-bold">R$ 0,00</strong>
+              </div>
+              <div class="text-[11px] text-slate-400 flex items-center space-x-1.5 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
+                <span class="text-slate-400">Dívidas:</span>
+                <strong id="dash-total-passivos-badge" class="text-rose-400 font-bold">R$ 0,00</strong>
+              </div>
+              <div class="text-[11px] text-slate-400 flex items-center space-x-1.5 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
+                <i data-lucide="piggy-bank" class="w-3.5 h-3.5 text-blue-400"></i>
+                <span>Poupança: <strong id="dash-box-taxa-poupanca" class="text-blue-400 font-bold">0%</strong></span>
+                <span id="dash-box-sobra-liquida" class="hidden"></span>
+              </div>
             </div>
           </div>
 
@@ -619,6 +699,28 @@
             </div>
           </div>
 
+        </div>
+
+        <!-- ===================================================================== -->
+        <!-- 4.1. ORÇAMENTO & TETOS DE GASTOS (ESTILO COPILOT / ORGANIZZE) -->
+        <!-- ===================================================================== -->
+        <div class="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/80 space-y-4 shadow-sm">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/80">
+            <div>
+              <div class="flex items-center space-x-2">
+                <h3 class="font-bold text-white text-base">Orçamento & Tetos de Gastos</h3>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">Consumo em Tempo Real</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5">Monitore seus limites por categoria para evitar surpresas no fim do mês</p>
+            </div>
+            <button onclick="App.switchTab('config')" class="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center space-x-1.5 self-start sm:self-auto px-3.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-750 border border-slate-700/60 transition">
+              <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+              <span>Configurar Tetos</span>
+            </button>
+          </div>
+          <div id="dash-budget-bars" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            <!-- Injetado dinamicamente via JS -->
+          </div>
         </div>
 
         <!-- ===================================================================== -->
