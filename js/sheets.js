@@ -146,7 +146,7 @@ const SheetsService = {
         
         // Mapeia e normaliza os dados retornados
         if (d.transacoes && Array.isArray(d.transacoes)) {
-          const transacoes = d.transacoes.map(t => ({
+          const remoteTrans = d.transacoes.map(t => ({
             id: t.id || 'tr_' + Math.random().toString(36).substr(2, 6),
             data: this.normalizeDate(t.data),
             tipo: (t.tipo || 'despesa').toLowerCase(),
@@ -156,7 +156,19 @@ const SheetsService = {
             metodo: t.metodo || 'Pix',
             status: t.status || 'pago'
           }));
-          localStorage.setItem('financas_transacoes_v1', JSON.stringify(transacoes));
+
+          // Merge inteligente: combina dados da nuvem sem deletar lançamentos locais recentes
+          const rawLocal = localStorage.getItem('financas_transacoes_v1');
+          const localTrans = rawLocal ? JSON.parse(rawLocal) : [];
+          const map = new Map();
+          remoteTrans.forEach(t => map.set(t.id, t));
+          localTrans.forEach(t => {
+            if (!map.has(t.id)) {
+              map.set(t.id, t);
+            }
+          });
+          const merged = Array.from(map.values());
+          localStorage.setItem('financas_transacoes_v1', JSON.stringify(merged));
         }
 
         if (d.reserva && Array.isArray(d.reserva)) {

@@ -2002,12 +2002,21 @@ const App = {
     const chkPrimeiraPaga = document.getElementById('trans-primeira-paga');
     const marcarPrimeiraPaga = chkPrimeiraPaga ? chkPrimeiraPaga.checked : true;
 
+    // Função auxiliar para avançar meses sem bug de overflow (ex: 31 de janeiro -> 28 de fevereiro)
+    const calcFutureDate = (anoBase, mes1Base, diaBase, offset) => {
+      const totalMeses = (mes1Base - 1) + offset;
+      const y = anoBase + Math.floor(totalMeses / 12);
+      const m = ((totalMeses % 12) + 12) % 12;
+      const maxDias = new Date(y, m + 1, 0).getDate();
+      const d = Math.min(diaBase, maxDias);
+      return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    };
+
     // 1. Recorrência / Fixa Mensal
     if (repTipo === 'fixa' && repQtd > 1) {
       const [ano, mes, dia] = dataNormalizada.split('-').map(Number);
       for (let i = 0; i < repQtd; i++) {
-        const d = new Date(ano, (mes - 1) + i, dia);
-        const dataItem = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const dataItem = calcFutureDate(ano, mes, dia, i);
         const itemStatus = (i === 0 && marcarPrimeiraPaga) ? (status || 'pago') : (marcarPrimeiraPaga ? 'pendente' : status);
         const itemPayload = {
           ...payload,
@@ -2018,13 +2027,15 @@ const App = {
           recorrencia: 'fixa'
         };
         window.StorageService.saveTransaction(itemPayload);
-        if (window.SheetsService.isConnected()) {
-          window.SheetsService.sendAction('add_transaction', itemPayload);
-        }
       }
       this.closeModal('modal-transaction');
       this.showToast(`Lançamento recorrente criado para os próximos ${repQtd} meses!`, 'success');
       this.render();
+
+      // Sincroniza em lote seguro para o Sheets sem concorrência
+      if (window.SheetsService.isConnected()) {
+        window.SheetsService.syncAllToSheets();
+      }
       return;
     }
 
@@ -2033,8 +2044,7 @@ const App = {
       const vParcela = repModo === 'parcela' ? valor : (valor / repQtd);
       const [ano, mes, dia] = dataNormalizada.split('-').map(Number);
       for (let p = 1; p <= repQtd; p++) {
-        const d = new Date(ano, (mes - 1) + (p - 1), dia);
-        const dataItem = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const dataItem = calcFutureDate(ano, mes, dia, p - 1);
         const itemStatus = (p === 1 && marcarPrimeiraPaga) ? (status || 'pago') : (marcarPrimeiraPaga ? 'pendente' : status);
         const itemPayload = {
           ...payload,
@@ -2048,13 +2058,15 @@ const App = {
           recorrencia: 'parcelada'
         };
         window.StorageService.saveTransaction(itemPayload);
-        if (window.SheetsService.isConnected()) {
-          window.SheetsService.sendAction('add_transaction', itemPayload);
-        }
       }
       this.closeModal('modal-transaction');
       this.showToast(`Compra parcelada em ${repQtd}x registrada com sucesso!`, 'success');
       this.render();
+
+      // Sincroniza em lote seguro para o Sheets sem concorrência
+      if (window.SheetsService.isConnected()) {
+        window.SheetsService.syncAllToSheets();
+      }
       return;
     }
 
@@ -2067,14 +2079,9 @@ const App = {
     this.showToast(msgSalvo, 'success');
     this.render();
 
-    // Envia para o Sheets se conectado
+    // Envia para o Sheets em segundo plano sem destruir os dados locais
     if (window.SheetsService.isConnected()) {
-      window.SheetsService.sendAction('add_transaction', payload).then(() => {
-        // Atualiza do Sheets e re-renderiza
-        window.SheetsService.fetchFromSheets().then(() => {
-          App.render();
-        });
-      });
+      window.SheetsService.sendAction('add_transaction', payload);
     }
   },
 
