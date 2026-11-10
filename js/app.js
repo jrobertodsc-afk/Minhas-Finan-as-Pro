@@ -52,6 +52,27 @@ const App = {
     'Vestuário': '#f43f5e'
   },
 
+  normalizeDate(val) {
+    if (window.SheetsService && typeof window.SheetsService.normalizeDate === 'function') {
+      return window.SheetsService.normalizeDate(val);
+    }
+    if (!val) return '';
+    val = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0, 10);
+    const brMatch = val.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (brMatch) {
+      return `${brMatch[3]}-${brMatch[2].padStart(2, '0')}-${brMatch[1].padStart(2, '0')}`;
+    }
+    const parsed = new Date(val);
+    if (!isNaN(parsed.getTime())) {
+      const ano = parsed.getFullYear();
+      const mes = String(parsed.getMonth() + 1).padStart(2, '0');
+      const dia = String(parsed.getDate()).padStart(2, '0');
+      return `${ano}-${mes}-${dia}`;
+    }
+    return val;
+  },
+
   init() {
     window.StorageService.init();
     this.setupTheme();
@@ -302,40 +323,46 @@ const App = {
     const isTotal = (this.dashboardPeriod === 'total');
     const startOfCurrentMonth = this.currentMonth + '-01';
 
-    // 1. Saldo Residual Vindo dos Meses Anteriores (Lucro/Sobra líquida passada)
+    // 1. Separação contábil do passado (tudo antes do 1º dia do mês corrente)
     const pastTrans = transactions.filter(t => {
-      const norm = window.SheetsService ? window.SheetsService.normalizeDate(t.data) : t.data;
+      const norm = this.normalizeDate(t.data);
       return (norm || '') < startOfCurrentMonth;
     });
 
-    const saldoResidualAnterior = isTotal ? 0 : pastTrans.reduce((acc, t) => {
-      if (t.status === 'pendente') return acc;
-      return t.tipo === 'receita' ? acc + Number(t.valor) : acc - Number(t.valor);
-    }, 0);
+    // 1.1 Sobra líquida de caixa dos meses anteriores (apenas efetivamente recebido e pago)
+    const pastPaidReceitas = pastTrans
+      .filter(t => t.tipo === 'receita' && t.status !== 'pendente')
+      .reduce((acc, t) => acc + Number(t.valor), 0);
+
+    const pastPaidDespesas = pastTrans
+      .filter(t => t.tipo === 'despesa' && t.status !== 'pendente')
+      .reduce((acc, t) => acc + Number(t.valor), 0);
+
+    const sobraCaixaPassada = pastPaidReceitas - pastPaidDespesas;
+
+    // 1.2 Pendências herdadas de meses anteriores (receitas a receber atrasadas e contas a pagar vencidas)
+    const pastPendingReceitasList = pastTrans.filter(t => t.tipo === 'receita' && t.status === 'pendente');
+    const pastPendingDespesasList = pastTrans.filter(t => t.tipo === 'despesa' && t.status === 'pendente');
+
+    const pastPendingReceitas = pastPendingReceitasList.reduce((acc, t) => acc + Number(t.valor), 0);
+    const pastPendingDespesas = pastPendingDespesasList.reduce((acc, t) => acc + Number(t.valor), 0);
+
+    // 1.3 Posição Residual Anterior Total (Sobra de caixa + a receber anterior - a pagar anterior)
+    const saldoResidualAnteriorTotal = isTotal ? 0 : (sobraCaixaPassada + pastPendingReceitas - pastPendingDespesas);
 
     // 2. Dados do Mês Selecionado
     const monthTrans = transactions.filter(t => {
-      const norm = window.SheetsService ? window.SheetsService.normalizeDate(t.data) : t.data;
+      const norm = this.normalizeDate(t.data);
       return (norm || '').startsWith(this.currentMonth);
     });
 
-    const totalReceitasMes = monthTrans.filter(t => t.tipo === 'receita').reduce((acc, t) => acc + Number(t.valor), 0);
     const receitasPagasMes = monthTrans.filter(t => t.tipo === 'receita' && t.status !== 'pendente').reduce((acc, t) => acc + Number(t.valor), 0);
     const receitasPendentesMes = monthTrans.filter(t => t.tipo === 'receita' && t.status === 'pendente').reduce((acc, t) => acc + Number(t.valor), 0);
+    const totalReceitasMes = receitasPagasMes + receitasPendentesMes;
 
-    const totalDespesasMes = monthTrans.filter(t => t.tipo === 'despesa').reduce((acc, t) => acc + Number(t.valor), 0);
     const despesasPagasMes = monthTrans.filter(t => t.tipo === 'despesa' && t.status !== 'pendente').reduce((acc, t) => acc + Number(t.valor), 0);
     const despesasPendentesMes = monthTrans.filter(t => t.tipo === 'despesa' && t.status === 'pendente').reduce((acc, t) => acc + Number(t.valor), 0);
-
-    const saldoOperacionalMes = totalReceitasMes - totalDespesasMes;
-    const saldoRealizadoMes = receitasPagasMes - despesasPagasMes;
-
-    const totalProventosMes = dividends
-      .filter(d => {
-        const norm = window.SheetsService ? window.SheetsService.normalizeDate(d.data) : d.data;
-        return (norm || '').startsWith(this.currentMonth);
-      })
-      .reduce((acc, d) => acc + Number(d.valor), 0);
+    const totalDespesasMes = despesasPagasMes + despesasPendentesMes;
 
     // 3. Dados Totais Acumulados Gerais (Todo o Histórico)
     const totalReceitasGeral = transactions.filter(t => t.tipo === 'receita').reduce((acc, t) => acc + Number(t.valor), 0);
@@ -349,11 +376,18 @@ const App = {
     const saldoGeral = totalReceitasGeral - totalDespesasGeral;
     const saldoRealizadoGeral = receitasPagasGeral - despesasPagasGeral;
 
+    const totalProventosMes = dividends
+      .filter(d => (this.normalizeDate(d.data) || '').startsWith(this.currentMonth))
+      .reduce((acc, d) => acc + Number(d.valor), 0);
+
     const totalProventosGeral = dividends.reduce((acc, d) => acc + Number(d.valor), 0);
 
-    // 4. Integração Contábil (Carryover): Saldo Disponível Hoje & Saldo Projetado
-    const saldoContaHoje = isTotal ? saldoRealizadoGeral : (saldoResidualAnterior + saldoRealizadoMes);
-    const saldoProjetadoFinal = isTotal ? saldoGeral : (saldoResidualAnterior + saldoOperacionalMes);
+    // 4. Integração Contábil (Carryover): Saldo Disponível Hoje & Saldo Projetado Final
+    // Saldo Disponível Hoje em Conta = Dinheiro em caixa passado + recebido no mês - pago no mês
+    const saldoContaHoje = isTotal ? saldoRealizadoGeral : (sobraCaixaPassada + receitasPagasMes - despesasPagasMes);
+
+    // Saldo Projetado no Fim do Mês = Saldo residual anterior + receitas previstas - despesas previstas
+    const saldoProjetadoFinal = isTotal ? saldoGeral : (saldoResidualAnteriorTotal + totalReceitasMes - totalDespesasMes);
 
     // 5. Reserva Total e Investimentos Total
     const totalReserva = emergencyFunds.reduce((acc, r) => {
@@ -371,13 +405,17 @@ const App = {
     const patrimonioTotal = totalReserva + totalInvestido + (saldoContaHoje > 0 ? saldoContaHoje : 0);
 
     // 6. Seleção dos valores conforme o modo ativo
-    const receitasExibidas = isTotal ? totalReceitasGeral : totalReceitasMes;
+    // Em modo MENSAL, os cards de receitas e despesas incorporam as pendências herdadas do mês anterior
+    const receitasExibidas = isTotal ? totalReceitasGeral : (totalReceitasMes + pastPendingReceitas);
     const receitasRealizadasExibidas = isTotal ? receitasPagasGeral : receitasPagasMes;
-    const receitasPendentesExibidas = isTotal ? receitasPendentesGeral : receitasPendentesMes;
-    const despesasExibidas = isTotal ? totalDespesasGeral : totalDespesasMes;
+    const receitasPendentesExibidas = isTotal ? receitasPendentesGeral : (receitasPendentesMes + pastPendingReceitas);
+
+    const despesasExibidas = isTotal ? totalDespesasGeral : (totalDespesasMes + pastPendingDespesas);
     const despesasPagasExibidas = isTotal ? despesasPagasGeral : despesasPagasMes;
-    const despesasPendentesExibidas = isTotal ? despesasPendentesGeral : despesasPendentesMes;
+    const despesasPendentesExibidas = isTotal ? despesasPendentesGeral : (despesasPendentesMes + pastPendingDespesas);
+
     const proventosExibidos = isTotal ? totalProventosGeral : totalProventosMes;
+    const saldoOperacionalMes = isTotal ? saldoGeral : (totalReceitasMes - totalDespesasMes);
 
     // Indicadores do Header do Dashboard
     const elBadge = document.getElementById('dash-periodo-badge');
@@ -396,8 +434,9 @@ const App = {
       ? 'Exibindo dados consolidados de <span class="text-slate-200 font-semibold">Todo o Histórico</span>'
       : `Exibindo dados de <span class="text-slate-200 font-semibold">${nomeMes}</span>`;
 
-    // 7. Atualiza Banner do Fluxo de Caixa Integrado
+    // 7. Atualiza Banner do Fluxo de Caixa Integrado (Régua Contábil)
     const elFlowAnt = document.getElementById('dash-flow-anterior');
+    const elFlowAntSub = document.getElementById('dash-flow-anterior-sub');
     const elFlowRec = document.getElementById('dash-flow-receitas');
     const elFlowDesp = document.getElementById('dash-flow-despesas');
     const elFlowSaldo = document.getElementById('dash-flow-saldo-final');
@@ -408,17 +447,29 @@ const App = {
     const pctDesp = despesasExibidas > 0 ? Math.min(100, Math.round((despesasPagasExibidas / despesasExibidas) * 100)) : 0;
 
     if (elFlowAnt) {
-      elFlowAnt.textContent = isTotal ? 'R$ 0,00' : this.formatMoney(saldoResidualAnterior);
-      elFlowAnt.className = `text-xl font-black ${saldoResidualAnterior >= 0 ? 'text-blue-400' : 'text-rose-400'}`;
+      elFlowAnt.textContent = isTotal ? 'R$ 0,00' : this.formatMoney(saldoResidualAnteriorTotal);
+      elFlowAnt.className = `text-base sm:text-lg font-black ${saldoResidualAnteriorTotal >= 0 ? 'text-blue-400' : 'text-rose-400'}`;
+    }
+    if (elFlowAntSub) {
+      if (isTotal) {
+        elFlowAntSub.textContent = 'Todo o Histórico';
+      } else if (pastPendingReceitas > 0 || pastPendingDespesas > 0) {
+        let txt = `Caixa: ${this.formatMoney(sobraCaixaPassada)}`;
+        if (pastPendingReceitas > 0) txt += ` • +${this.formatMoney(pastPendingReceitas)} a rec.`;
+        if (pastPendingDespesas > 0) txt += ` • -${this.formatMoney(pastPendingDespesas)} a pag.`;
+        elFlowAntSub.textContent = txt;
+      } else {
+        elFlowAntSub.textContent = 'Sobra meses passados';
+      }
     }
     if (elFlowRec) elFlowRec.textContent = this.formatMoney(receitasExibidas);
     if (elFlowDesp) elFlowDesp.textContent = this.formatMoney(despesasExibidas);
     if (elFlowSaldo) {
       elFlowSaldo.textContent = this.formatMoney(saldoProjetadoFinal);
-      elFlowSaldo.className = `text-xl font-black ${saldoProjetadoFinal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      elFlowSaldo.className = `text-xl sm:text-2xl font-black ${saldoProjetadoFinal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
     }
-    if (elFlowRecPct) elFlowRecPct.textContent = `${pctRec}% Recebido`;
-    if (elFlowDespPct) elFlowDespPct.textContent = `${pctDesp}% Pago`;
+    if (elFlowRecPct) elFlowRecPct.textContent = `${pctRec}% recebido`;
+    if (elFlowDespPct) elFlowDespPct.textContent = `${pctDesp}% pago`;
 
     // 8. Atualiza Card 1 (Saldo Operacional e Saldo em Conta)
     const elLblSaldo = document.getElementById('dash-label-saldo');
@@ -428,6 +479,21 @@ const App = {
     const elSaldoComp = document.getElementById('dash-saldo-comparativo');
 
     const saldoExibido = isTotal ? saldoGeral : saldoOperacionalMes;
+
+    if (elLblSaldo) elLblSaldo.textContent = isTotal ? 'Saldo Geral Acumulado' : 'Disponível Hoje para Uso:';
+    if (elSaldo) {
+      elSaldo.textContent = this.formatMoney(saldoExibido);
+      elSaldo.className = `text-base sm:text-lg font-black ${saldoExibido >= 0 ? 'text-purple-400' : 'text-rose-400'}`;
+    }
+    if (elSaldoReal) {
+      elSaldoReal.textContent = this.formatMoney(saldoContaHoje);
+      elSaldoReal.className = `text-3xl sm:text-5xl font-black tracking-tight ${saldoContaHoje >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+    if (elDespPend) elDespPend.textContent = this.formatMoney(despesasPendentesExibidas);
+    if (elSaldoComp) {
+      elSaldoComp.textContent = this.formatMoney(saldoContaHoje);
+      elSaldoComp.className = `text-base font-bold ${saldoContaHoje >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
 
     if (elLblSaldo) elLblSaldo.textContent = isTotal ? 'Saldo Geral Acumulado' : 'Disponível Hoje para Uso:';
     if (elSaldo) {
@@ -551,13 +617,23 @@ const App = {
     if (elDashDebtBar) elDashDebtBar.style.width = `${pctDebts}%`;
     if (elDashDebtRestante) elDashDebtRestante.textContent = this.formatMoney(restanteDebts);
 
-    // Ordena todas as transações por data mais recente primeiro
-    const sortedRecent = [...transactions].sort((a, b) => {
-      const da = window.SheetsService ? window.SheetsService.normalizeDate(a.data) : a.data;
-      const db = window.SheetsService ? window.SheetsService.normalizeDate(b.data) : b.data;
-      return (db || '').localeCompare(da || '');
-    });
-    this.renderRecentTransactions(sortedRecent.slice(0, 6));
+    // Movimentações no Dashboard:
+    // Prioriza pendências herdadas de meses passados (urgentes para receber/pagar), depois as mais recentes
+    const pendingPastItems = isTotal ? [] : [...pastPendingReceitasList, ...pastPendingDespesasList].map(t => ({
+      ...t,
+      isAnteriorPendente: true
+    }));
+
+    const sortedRecent = [...transactions]
+      .filter(t => !pendingPastItems.some(p => p.id === t.id))
+      .sort((a, b) => {
+        const da = this.normalizeDate(a.data);
+        const db = this.normalizeDate(b.data);
+        return (db || '').localeCompare(da || '');
+      });
+
+    const itemsToShow = [...pendingPastItems, ...sortedRecent].slice(0, 6);
+    this.renderRecentTransactions(itemsToShow);
 
     // Gráficos do Dashboard
     const dashTrans = isTotal ? transactions : monthTrans;
@@ -569,21 +645,29 @@ const App = {
     if (!container) return;
 
     if (items.length === 0) {
-      container.innerHTML = `<div class="p-6 text-center text-slate-500 text-xs font-medium">Nenhuma transação registrada ainda. Clique em "+ Nova Transação" para começar!</div>`;
+      container.innerHTML = `<div class="p-6 text-center text-slate-500 text-xs font-medium">Nenhuma movimentação registrada. Clique em "+ Nova Receita" ou "− Nova Despesa" para começar!</div>`;
       return;
     }
 
     container.innerHTML = items.map(t => {
       const isReceita = t.tipo === 'receita';
       const isPendente = (t.status === 'pendente');
+      const isAnterior = t.isAnteriorPendente || false;
       return `
-        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/40 hover:bg-slate-800/70 transition border border-slate-700/50">
+        <div class="flex items-center justify-between p-3.5 rounded-2xl ${isAnterior ? 'bg-amber-950/20 border border-amber-500/30' : 'bg-slate-800/40 border border-slate-700/50'} hover:bg-slate-800/70 transition">
           <div class="flex items-center space-x-3 min-w-0">
             <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${isReceita ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
               <i data-lucide="${isReceita ? 'arrow-down-left' : 'arrow-up-right'}" class="w-5 h-5"></i>
             </div>
             <div class="min-w-0">
-              <p class="text-xs sm:text-sm font-bold text-slate-100 truncate">${this.escapeHtml(t.descricao || t.categoria)}</p>
+              <div class="flex items-center space-x-2">
+                <p class="text-xs sm:text-sm font-bold text-slate-100 truncate">${this.escapeHtml(t.descricao || t.categoria)}</p>
+                ${isAnterior ? `
+                  <span class="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30 whitespace-nowrap">
+                    ⏳ Mês Anterior • ${isReceita ? 'A Receber' : 'A Pagar'}
+                  </span>
+                ` : ''}
+              </div>
               <p class="text-[11px] text-slate-400">${this.formatDate(t.data)} • <span class="text-slate-300 font-medium">${t.categoria}</span></p>
             </div>
           </div>
@@ -595,7 +679,7 @@ const App = {
               <span class="text-[10px] px-2 py-0.5 rounded-full ${t.metodo ? 'bg-slate-700/80 text-slate-300' : ''}">${t.metodo || 'Geral'}</span>
             </div>
             ${isPendente ? `
-              <button onclick="App.markAsPaid('${t.id}')" title="${isReceita ? 'Marcar como Recebido' : 'Marcar como Pago'}" class="px-2.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white text-[11px] font-bold transition flex items-center space-x-1 border border-emerald-500/30 shadow-sm">
+              <button onclick="App.markAsPaid('${t.id}')" title="${isReceita ? 'Marcar como Recebido' : 'Marcar como Pago'}" class="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition flex items-center space-x-1 shadow-sm">
                 <i data-lucide="check" class="w-3.5 h-3.5"></i>
                 <span class="hidden sm:inline">${isReceita ? 'Receber' : 'Pagar'}</span>
               </button>
@@ -631,20 +715,46 @@ const App = {
     const catVal = filterCat ? filterCat.value : 'todos';
     const metodoVal = filterMetodo ? filterMetodo.value : 'todos';
 
-    // Filtra pelo mês selecionado com data normalizada (a menos que esteja configurado para ver todos)
+    const startOfCurrentMonth = this.currentMonth + '-01';
+
+    // 1. Saldo Residual Vindo dos Meses Anteriores (Carryover)
+    const pastTrans = transactions.filter(t => {
+      const norm = this.normalizeDate(t.data);
+      return (norm || '') < startOfCurrentMonth;
+    });
+
+    const pastPaidRec = pastTrans.filter(t => t.tipo === 'receita' && t.status !== 'pendente').reduce((a, t) => a + Number(t.valor), 0);
+    const pastPaidDesp = pastTrans.filter(t => t.tipo === 'despesa' && t.status !== 'pendente').reduce((a, t) => a + Number(t.valor), 0);
+    const sobraCaixaPassada = pastPaidRec - pastPaidDesp;
+
+    const pastPendRecList = pastTrans.filter(t => t.tipo === 'receita' && t.status === 'pendente');
+    const pastPendDespList = pastTrans.filter(t => t.tipo === 'despesa' && t.status === 'pendente');
+
+    const pastPendRec = pastPendRecList.reduce((a, t) => a + Number(t.valor), 0);
+    const pastPendDesp = pastPendDespList.reduce((a, t) => a + Number(t.valor), 0);
+
+    const saldoResidualAnteriorTotal = this.filterAllMonths ? 0 : (sobraCaixaPassada + pastPendRec - pastPendDesp);
+
+    // 2. Filtra pelo mês selecionado + pendências herdadas de meses anteriores
     let filtered = transactions;
     if (!this.filterAllMonths) {
       filtered = filtered.filter(t => {
-        const norm = window.SheetsService ? window.SheetsService.normalizeDate(t.data) : t.data;
-        return (norm || '').startsWith(this.currentMonth);
+        const norm = this.normalizeDate(t.data);
+        const noMes = (norm || '').startsWith(this.currentMonth);
+        const pendenteAnterior = (norm || '') < startOfCurrentMonth && t.status === 'pendente';
+        return noMes || pendenteAnterior;
       });
     }
 
-    // Ordena sempre do mais recente para o mais antigo (novos no topo)
+    // Ordenação inteligente: Pendências herdadas de meses anteriores no topo, depois data mais recente
     filtered.sort((a, b) => {
-      const da = window.SheetsService ? window.SheetsService.normalizeDate(a.data) : a.data;
-      const db = window.SheetsService ? window.SheetsService.normalizeDate(b.data) : b.data;
-      return (db || '').localeCompare(da || '');
+      const normA = this.normalizeDate(a.data);
+      const normB = this.normalizeDate(b.data);
+      const isPendAntA = !this.filterAllMonths && (normA || '') < startOfCurrentMonth && a.status === 'pendente';
+      const isPendAntB = !this.filterAllMonths && (normB || '') < startOfCurrentMonth && b.status === 'pendente';
+      if (isPendAntA && !isPendAntB) return -1;
+      if (!isPendAntA && isPendAntB) return 1;
+      return (normB || '').localeCompare(normA || '');
     });
 
     // Filtros adicionais
@@ -677,23 +787,18 @@ const App = {
     const despesasPagas = filtered.filter(t => t.tipo === 'despesa' && t.status !== 'pendente').reduce((a, t) => a + Number(t.valor), 0);
     const despesasPendentes = filtered.filter(t => t.tipo === 'despesa' && t.status === 'pendente').reduce((a, t) => a + Number(t.valor), 0);
 
-    const saldoPrevisto = totalReceitas - totalDespesas;
+    // Saldo Disponível Hoje em Conta (Liquidez Real)
+    const saldoContaHoje = this.filterAllMonths 
+      ? (receitasPagas - despesasPagas)
+      : (sobraCaixaPassada + receitasPagas - despesasPagas);
+
+    // Saldo Previsto no Fim do Mês (Saldo Projetado Contábil)
+    const saldoPrevisto = this.filterAllMonths
+      ? (totalReceitas - totalDespesas)
+      : (sobraCaixaPassada + totalReceitas - totalDespesas);
+
     const saldoRealizado = receitasPagas - despesasPagas;
     const saldoLiquidar = receitasPendentes - despesasPendentes;
-
-    // Saldo Residual Anterior (Carryover de meses passados)
-    const startOfCurrentMonth = this.currentMonth + '-01';
-    const pastTrans = transactions.filter(t => {
-      const norm = window.SheetsService ? window.SheetsService.normalizeDate(t.data) : t.data;
-      return (norm || '') < startOfCurrentMonth;
-    });
-
-    const saldoAnteriorRealizado = this.filterAllMonths ? 0 : pastTrans.reduce((acc, t) => {
-      if (t.status === 'pendente') return acc;
-      return t.tipo === 'receita' ? acc + Number(t.valor) : acc - Number(t.valor);
-    }, 0);
-
-    const saldoContaHoje = saldoAnteriorRealizado + saldoRealizado;
 
     // Atualização do Banner de Saldo Residual Anterior
     const elExpSaldoAnt = document.getElementById('exp-saldo-anterior');
@@ -701,8 +806,8 @@ const App = {
     const elExpBannerCarryover = document.getElementById('exp-banner-carryover');
 
     if (elExpSaldoAnt) {
-      elExpSaldoAnt.textContent = this.formatMoney(saldoAnteriorRealizado);
-      elExpSaldoAnt.className = `text-base font-black ${saldoAnteriorRealizado >= 0 ? 'text-blue-400' : 'text-rose-400'}`;
+      elExpSaldoAnt.textContent = this.formatMoney(saldoResidualAnteriorTotal);
+      elExpSaldoAnt.className = `text-base font-black ${saldoResidualAnteriorTotal >= 0 ? 'text-blue-400' : 'text-rose-400'}`;
     }
     if (elExpContaHoje) {
       elExpContaHoje.textContent = this.formatMoney(saldoContaHoje);
@@ -778,14 +883,23 @@ const App = {
         ${filtered.map(t => {
           const isReceita = t.tipo === 'receita';
           const isPendente = t.status === 'pendente';
+          const normData = this.normalizeDate(t.data);
+          const isAnteriorPendente = !this.filterAllMonths && (normData || '') < startOfCurrentMonth && isPendente;
           return `
-            <div class="flex items-center justify-between p-3.5 bg-slate-900/60 hover:bg-slate-800/80 rounded-2xl border border-slate-800/80 transition">
+            <div class="flex items-center justify-between p-3.5 ${isAnteriorPendente ? 'bg-amber-950/20 border border-amber-500/30' : 'bg-slate-900/60 border border-slate-800/80'} hover:bg-slate-800/80 rounded-2xl transition">
               <div class="flex items-center space-x-3.5">
                 <div class="w-11 h-11 rounded-2xl flex items-center justify-center ${isReceita ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
                   <i data-lucide="${isReceita ? 'arrow-down-left' : 'arrow-up-right'}" class="w-5 h-5"></i>
                 </div>
                 <div>
-                  <h4 class="text-sm font-semibold text-slate-100">${this.escapeHtml(t.descricao || t.categoria)}</h4>
+                  <div class="flex items-center space-x-2">
+                    <h4 class="text-sm font-semibold text-slate-100">${this.escapeHtml(t.descricao || t.categoria)}</h4>
+                    ${isAnteriorPendente ? `
+                      <span class="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30 whitespace-nowrap">
+                        ⏳ Mês Anterior • ${isReceita ? 'A Receber' : 'A Pagar'}
+                      </span>
+                    ` : ''}
+                  </div>
                   <div class="flex flex-wrap items-center gap-1.5 text-xs text-slate-400 mt-0.5">
                     <span>${this.formatDate(t.data)}</span>
                     <span>•</span>
@@ -805,7 +919,7 @@ const App = {
                   
                   <div class="flex items-center justify-end space-x-1.5 mt-1">
                     ${isPendente ? `
-                      <button onclick="App.markAsPaid('${t.id}')" title="${isReceita ? 'Receber agora' : 'Pagar agora'}" class="px-2.5 py-1 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white text-[11px] font-bold transition flex items-center space-x-1 border border-emerald-500/30">
+                      <button onclick="App.markAsPaid('${t.id}')" title="${isReceita ? 'Receber agora' : 'Pagar agora'}" class="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition flex items-center space-x-1 shadow-sm">
                         <i data-lucide="check" class="w-3 h-3"></i>
                         <span>${isReceita ? 'Receber' : 'Pagar'}</span>
                       </button>
@@ -1283,20 +1397,23 @@ const App = {
 
     // 2. Gráfico de Fluxo Mensal (Receitas x Despesas)
     const allTrans = window.StorageService.getTransactions();
+    const curParts = (this.currentMonth || new Date().toISOString().slice(0, 7)).split('-');
+    const curYear = parseInt(curParts[0]) || new Date().getFullYear();
+    const curMonth = (parseInt(curParts[1]) || (new Date().getMonth() + 1)) - 1;
     const months = [];
-    const now = new Date();
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      months.push(d.toISOString().slice(0, 7));
+      const d = new Date(curYear, curMonth - i, 1);
+      const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      months.push(mStr);
     }
 
     const recByMonth = months.map(m => {
-      return allTrans.filter(t => (t.data || '').startsWith(m) && t.tipo === 'receita')
+      return allTrans.filter(t => (this.normalizeDate(t.data) || '').startsWith(m) && t.tipo === 'receita')
                      .reduce((a, t) => a + Number(t.valor), 0);
     });
 
     const despByMonth = months.map(m => {
-      return allTrans.filter(t => (t.data || '').startsWith(m) && t.tipo === 'despesa')
+      return allTrans.filter(t => (this.normalizeDate(t.data) || '').startsWith(m) && t.tipo === 'despesa')
                       .reduce((a, t) => a + Number(t.valor), 0);
     });
 
