@@ -1532,7 +1532,7 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1">Categoria</label>
-            <select id="trans-categoria" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-emerald-500">
+            <select id="trans-categoria" onchange="App.handleCategoryChange()" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-emerald-500">
               <!-- Injetado dinamicamente -->
             </select>
           </div>
@@ -1540,6 +1540,18 @@
             <label class="block text-xs font-semibold text-slate-400 mb-1">Data</label>
             <input type="date" id="trans-data" required class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-emerald-500">
           </div>
+        </div>
+
+        <!-- Vínculo com Meta de Quitação (Abate do Saldo Devedor) -->
+        <div id="trans-debt-link-group" class="hidden p-3 bg-purple-950/20 rounded-2xl border border-purple-500/30 space-y-1.5">
+          <label class="block text-xs font-bold text-purple-300 flex items-center space-x-1.5">
+            <i data-lucide="link" class="w-3.5 h-3.5"></i>
+            <span>Vincular à Meta de Quitação (Abate do Saldo Devedor)</span>
+          </label>
+          <select id="trans-debt-id" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500">
+            <option value="">Não vincular a nenhuma dívida</option>
+          </select>
+          <p class="text-[10px] text-slate-400">Ao pagar esta despesa, o valor abaterá automaticamente a dívida selecionada.</p>
         </div>
 
         <!-- Método de Pagamento e Status -->
@@ -1892,6 +1904,78 @@
   </div>
 
   <!-- ========================================================================= -->
+  <!-- MODAL: GERAR PARCELAS NO FLUXO DE CAIXA -->
+  <!-- ========================================================================= -->
+  <div id="modal-generate-installments" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
+            <i data-lucide="calendar-plus" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Gerar Parcelas no Extrato</h3>
+            <p class="text-xs text-slate-400">Projetar contas a pagar nos próximos meses</p>
+          </div>
+        </div>
+        <button onclick="App.closeModal('modal-generate-installments')" class="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-gen-installments" onsubmit="App.handleGenerateInstallments(event)" class="space-y-4">
+        <input type="hidden" id="gen-inst-debt-id">
+
+        <div class="p-3 bg-slate-950/60 rounded-2xl border border-slate-800 space-y-1">
+          <p class="text-[11px] text-slate-400 uppercase font-semibold">Meta de Quitação Selecionada</p>
+          <p id="gen-inst-debt-info" class="text-sm font-bold text-white">-</p>
+          <p id="gen-inst-debt-saldo" class="text-xs text-rose-400 font-semibold">-</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Valor da Parcela (R$)*</label>
+            <input type="number" step="0.01" id="gen-inst-valor" required class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-blue-500 font-bold">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Qtd de Parcelas*</label>
+            <input type="number" min="1" max="120" id="gen-inst-qtd" required class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-blue-500 font-bold">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">1º Vencimento*</label>
+            <input type="date" id="gen-inst-data" required class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Forma de Pagamento</label>
+            <select id="gen-inst-metodo" class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:border-blue-500">
+              <option value="Pix">Pix</option>
+              <option value="Boleto">Boleto</option>
+              <option value="Cartão de Débito">Débito em Conta</option>
+              <option value="Transferência">Transferência</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="p-3 bg-blue-500/10 rounded-2xl border border-blue-500/20 text-xs text-blue-300 space-y-1">
+          <p class="font-bold flex items-center space-x-1">
+            <i data-lucide="info" class="w-3.5 h-3.5 shrink-0"></i>
+            <span>Integração Automática</span>
+          </p>
+          <p class="text-[11px] text-blue-200/80">As parcelas serão lançadas mês a mês como <strong>Contas a Pagar (Pendentes)</strong>. Ao marcar cada parcela como Paga, ela abaterá automaticamente o saldo desta dívida!</p>
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-2xl shadow-lg shadow-blue-600/30 transition flex items-center justify-center space-x-1.5">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Gerar Parcelas no Extrato</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
   <!-- MODAL: AJUSTAR METAS DE INVESTIMENTO -->
   <!-- ========================================================================= -->
   <div id="modal-investment-goals" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
@@ -1978,9 +2062,9 @@
   <div id="toast-container" class="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts da Aplicação com Cache Buster -->
-  <script src="js/storage.js?v=22"></script>
-  <script src="js/sheets.js?v=22"></script>
-  <script src="js/app.js?v=22"></script>
+  <script src="js/storage.js?v=23"></script>
+  <script src="js/sheets.js?v=23"></script>
+  <script src="js/app.js?v=23"></script>
 </body>
 </html>
 

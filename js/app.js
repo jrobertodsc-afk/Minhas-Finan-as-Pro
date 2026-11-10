@@ -939,6 +939,12 @@ const App = {
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isReceita ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
                   ${isReceita ? 'Receita' : 'Despesa'}
                 </span>
+                ${t.debtId ? `
+                  <span class="px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-300 text-[10px] font-bold border border-purple-500/25 whitespace-nowrap flex items-center space-x-1">
+                    <i data-lucide="link" class="w-2.5 h-2.5"></i>
+                    <span>Quitação</span>
+                  </span>
+                ` : ''}
                 ${isAnterior ? `
                   <span class="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30 whitespace-nowrap">
                     ⏳ Mês Anterior • ${isReceita ? 'A Receber' : 'A Pagar'}
@@ -1202,6 +1208,7 @@ const App = {
                     <span class="text-slate-400">${t.metodo || 'Geral'}</span>
                     ${t.recorrencia === 'fixa' ? `<span class="px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20">🔁 Fixa</span>` : ''}
                     ${t.parcela ? `<span class="px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-400 text-[10px] font-bold border border-purple-500/20">💳 ${t.parcela}</span>` : ''}
+                    ${t.debtId ? `<span class="px-1.5 py-0.5 rounded-md bg-purple-500/15 text-purple-300 text-[10px] font-bold border border-purple-500/25 flex items-center space-x-1"><i data-lucide="link" class="w-2.5 h-2.5"></i><span>Quitação</span></span>` : ''}
                   </div>
                 </div>
               </div>
@@ -1879,7 +1886,40 @@ const App = {
     });
 
     this.updateCategoryOptions(tipo);
+    this.updateDebtSelectOptions();
     this.openModal('modal-transaction');
+  },
+
+  handleCategoryChange() {
+    this.updateDebtSelectOptions();
+  },
+
+  updateDebtSelectOptions(selectedDebtId = '') {
+    const debtGroup = document.getElementById('trans-debt-link-group');
+    const debtSelect = document.getElementById('trans-debt-id');
+    if (!debtGroup || !debtSelect) return;
+
+    const cat = document.getElementById('trans-categoria')?.value || '';
+    const tipo = document.getElementById('trans-tipo')?.value || 'despesa';
+    const debts = window.StorageService.getDebts();
+
+    const isDebtRelated = cat === 'Empréstimo / Financiamento' || Boolean(selectedDebtId) || (debts.length > 0 && cat.toLowerCase().includes('empréstimo'));
+
+    if (tipo === 'despesa' && isDebtRelated && debts.length > 0) {
+      debtGroup.classList.remove('hidden');
+      debtSelect.innerHTML = `<option value="">Não vincular a nenhuma dívida</option>` + debts.map(d => {
+        const restante = Math.max(0, Number(d.valorTotal) - Number(d.valorPago));
+        return `<option value="${d.id}" ${d.id === selectedDebtId ? 'selected' : ''}>${this.escapeHtml(d.nome)} (${this.escapeHtml(d.instituicao || 'Dívida')} - Restante: ${this.formatMoney(restante)})</option>`;
+      }).join('');
+      if (selectedDebtId) {
+        debtSelect.value = selectedDebtId;
+      } else if (debts.length === 1 && cat === 'Empréstimo / Financiamento') {
+        debtSelect.value = debts[0].id;
+      }
+    } else {
+      debtGroup.classList.add('hidden');
+      debtSelect.value = '';
+    }
   },
 
   editTransaction(id) {
@@ -1898,6 +1938,7 @@ const App = {
     document.getElementById('trans-data').value = this.normalizeDate(t.data);
     document.getElementById('trans-metodo').value = t.metodo || 'Pix';
     document.getElementById('trans-categoria').value = t.categoria;
+    this.updateDebtSelectOptions(t.debtId || '');
     this.setModalTransactionStatus(t.status || 'pago');
 
     const repTipo = document.getElementById('trans-repeticao-tipo');
@@ -2061,6 +2102,8 @@ const App = {
     }
 
     const dataNormalizada = window.SheetsService ? window.SheetsService.normalizeDate(data) : data;
+    const debtId = document.getElementById('trans-debt-id')?.value || undefined;
+    const isNew = !id;
 
     const payload = {
       id: id || undefined,
@@ -2071,6 +2114,7 @@ const App = {
       categoria,
       metodo,
       status,
+      debtId: (tipo === 'despesa' && debtId) ? debtId : undefined,
       dataPagamento: status === 'pago' ? dataNormalizada : undefined
     };
 
@@ -2159,6 +2203,11 @@ const App = {
       return;
     }
 
+    // Se for lançamento novo vinculado à dívida e já estiver como PAGO, abate da dívida
+    if (isNew && payload.debtId && payload.tipo === 'despesa' && payload.status === 'pago') {
+      window.StorageService.amortizeDebt(payload.debtId, payload.valor);
+    }
+
     // Salva lançamento único
     window.StorageService.saveTransaction(payload);
     this.closeModal('modal-transaction');
@@ -2176,6 +2225,11 @@ const App = {
 
   deleteTransaction(id) {
     if (!confirm('Deseja realmente excluir esta transação?')) return;
+    const list = window.StorageService.getTransactions();
+    const t = list.find(item => item.id === id);
+    if (t && t.debtId && t.status === 'pago' && t.tipo === 'despesa') {
+      window.StorageService.amortizeDebt(t.debtId, -Number(t.valor));
+    }
     window.StorageService.deleteTransaction(id);
     this.showToast('Transação excluída.', 'info');
     this.render();
@@ -2189,9 +2243,19 @@ const App = {
     const list = window.StorageService.getTransactions();
     const t = list.find(item => item.id === id);
     if (t) {
+      const wasPending = t.status === 'pendente';
       t.status = 'pago';
       t.dataPagamento = new Date().toISOString().slice(0, 10);
       window.StorageService.saveTransaction(t);
+
+      // Se for transação vinculada a uma dívida e estava pendente, abate do saldo devedor
+      if (wasPending && t.debtId && t.tipo === 'despesa') {
+        const debt = window.StorageService.amortizeDebt(t.debtId, t.valor);
+        if (debt) {
+          this.showToast(`✓ Parcela abatida da meta "${debt.nome}"!`, 'success');
+        }
+      }
+
       this.render();
       const msg = t.tipo === 'despesa' ? '✓ Despesa marcada como PAGA!' : '✓ Receita marcada como RECEBIDA!';
       this.showToast(msg, 'success');
@@ -2205,10 +2269,17 @@ const App = {
     const list = window.StorageService.getTransactions();
     const t = list.find(item => item.id === id);
     if (t) {
-      t.status = t.status === 'pendente' ? 'pago' : 'pendente';
-      if (t.status === 'pago') {
+      const willBePaid = t.status === 'pendente';
+      t.status = willBePaid ? 'pago' : 'pendente';
+      if (willBePaid) {
         t.dataPagamento = new Date().toISOString().slice(0, 10);
       }
+
+      if (t.debtId && t.tipo === 'despesa') {
+        const delta = willBePaid ? Number(t.valor) : -Number(t.valor);
+        window.StorageService.amortizeDebt(t.debtId, delta);
+      }
+
       window.StorageService.saveTransaction(t);
       this.render();
       this.showToast(`Transação alterada para ${t.status === 'pago' ? 'Paga' : 'Pendente'}.`, 'info');
@@ -2510,6 +2581,7 @@ const App = {
   // ------------------------------------------
   renderDebts() {
     const debts = window.StorageService.getDebts();
+    const allTransactions = window.StorageService.getTransactions();
     const container = document.getElementById('debts-list-container');
     
     // Resumo
@@ -2553,6 +2625,10 @@ const App = {
       const parcelasRestantes = d.valorParcela > 0 ? Math.ceil(restante / Number(d.valorParcela)) : 0;
       const quitado = restante <= 0;
 
+      const debtTrans = allTransactions.filter(t => t.debtId === d.id);
+      const pagasCount = debtTrans.filter(t => t.status === 'pago').length;
+      const pendentesCount = debtTrans.filter(t => t.status === 'pendente').length;
+
       return `
         <div class="p-4 md:p-5 rounded-2xl bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 transition space-y-3">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -2572,6 +2648,10 @@ const App = {
             </div>
             <div class="flex items-center space-x-2">
               ${!quitado ? `
+                <button onclick="App.openGenerateInstallmentsModal('${d.id}')" title="Gerar e agendar parcelas no extrato de despesas" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-blue-400 hover:text-blue-300 font-bold text-xs flex items-center space-x-1.5 border border-slate-800 transition">
+                  <i data-lucide="calendar-plus" class="w-3.5 h-3.5"></i>
+                  <span class="hidden sm:inline">Gerar Parcelas</span>
+                </button>
                 <button onclick="App.openAmortizeModal('${d.id}')" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-md transition">
                   <i data-lucide="dollar-sign" class="w-3.5 h-3.5"></i>
                   <span>Amortizar</span>
@@ -2598,9 +2678,14 @@ const App = {
           </div>
 
           <!-- Indicadores de Saldo e Parcelas -->
-          <div class="flex flex-wrap items-center justify-between text-xs pt-2 border-t border-slate-800/60 text-slate-400">
+          <div class="flex flex-wrap items-center justify-between text-xs pt-2 border-t border-slate-800/60 text-slate-400 gap-2">
             <span>Saldo Devedor: <strong class="text-rose-400 font-bold">${this.formatMoney(restante)}</strong></span>
             ${d.valorParcela > 0 ? `<span>Parcela: <strong class="text-white">${this.formatMoney(d.valorParcela)}</strong> (~${parcelasRestantes} restantes)</span>` : ''}
+            ${debtTrans.length > 0 ? `
+              <span class="text-[11px] px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                Parcelas no Extrato: <strong class="text-emerald-400">${pagasCount} pagas</strong> • <strong class="text-amber-400">${pendentesCount} agendadas</strong>
+              </span>
+            ` : ''}
           </div>
         </div>
       `;
@@ -2712,26 +2797,123 @@ const App = {
 
     const updated = window.StorageService.amortizeDebt(id, valor);
 
-    // Se marcado, cria a despesa automaticamente
+    // Se marcado, cria a despesa automaticamente ou quita a parcela pendente do mês
     if (lancarDespesa && updated) {
-      const transPayload = {
-        id: 'tr_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
-        tipo: 'despesa',
-        descricao: `[Quitação] ${updated.nome}`,
-        valor,
-        data: window.SheetsService.normalizeDate(data),
-        categoria: 'Empréstimo / Financiamento',
-        metodo: 'Pix',
-        status: 'pago'
-      };
-      window.StorageService.saveTransaction(transPayload);
-      if (window.SheetsService.isConnected()) {
-        window.SheetsService.sendAction('add_transaction', transPayload);
+      const list = window.StorageService.getTransactions();
+      const mesData = data.slice(0, 7);
+      const existingPending = list.find(t => t.debtId === updated.id && t.status === 'pendente' && (t.data || '').startsWith(mesData));
+
+      if (existingPending) {
+        existingPending.status = 'pago';
+        existingPending.dataPagamento = window.SheetsService ? window.SheetsService.normalizeDate(data) : data;
+        existingPending.valor = valor;
+        window.StorageService.saveTransaction(existingPending);
+        if (window.SheetsService && window.SheetsService.isConnected()) {
+          window.SheetsService.sendAction('add_transaction', existingPending);
+        }
+      } else {
+        const transPayload = {
+          id: 'tr_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
+          tipo: 'despesa',
+          descricao: `[Quitação] ${updated.nome}`,
+          valor,
+          data: window.SheetsService ? window.SheetsService.normalizeDate(data) : data,
+          categoria: 'Empréstimo / Financiamento',
+          metodo: 'Pix',
+          status: 'pago',
+          debtId: updated.id,
+          dataPagamento: window.SheetsService ? window.SheetsService.normalizeDate(data) : data
+        };
+        window.StorageService.saveTransaction(transPayload);
+        if (window.SheetsService && window.SheetsService.isConnected()) {
+          window.SheetsService.sendAction('add_transaction', transPayload);
+        }
       }
     }
 
     this.closeModal('modal-amortizar');
     this.showToast(`Amortização de ${this.formatMoney(valor)} registrada!`, 'success');
+    this.render();
+  },
+
+  openGenerateInstallmentsModal(debtId) {
+    const debts = window.StorageService.getDebts();
+    const d = debts.find(x => x.id === debtId);
+    if (!d) return;
+
+    const restante = Math.max(0, Number(d.valorTotal) - Number(d.valorPago));
+    const parcela = Number(d.valorParcela) || 0;
+    const parcelasRestantes = parcela > 0 ? Math.ceil(restante / parcela) : 1;
+
+    document.getElementById('gen-inst-debt-id').value = d.id;
+    document.getElementById('gen-inst-debt-info').textContent = `${d.nome} (${d.instituicao || 'Dívida'})`;
+    document.getElementById('gen-inst-debt-saldo').textContent = `Saldo Devedor Restante: ${this.formatMoney(restante)}`;
+    document.getElementById('gen-inst-valor').value = parcela > 0 ? parcela : (restante || 100);
+    document.getElementById('gen-inst-qtd').value = parcelasRestantes;
+
+    // Próximo vencimento: próximo mês dia 10 (ou dia atual se posterior)
+    const today = new Date();
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 10);
+    document.getElementById('gen-inst-data').value = nextMonth.toISOString().slice(0, 10);
+    document.getElementById('gen-inst-metodo').value = 'Pix';
+
+    this.openModal('modal-generate-installments');
+  },
+
+  handleGenerateInstallments(e) {
+    e.preventDefault();
+    const debtId = document.getElementById('gen-inst-debt-id').value;
+    const valor = parseFloat(document.getElementById('gen-inst-valor').value);
+    const qtd = parseInt(document.getElementById('gen-inst-qtd').value, 10);
+    const dataInicial = document.getElementById('gen-inst-data').value;
+    const metodo = document.getElementById('gen-inst-metodo').value;
+
+    if (!valor || valor <= 0 || !qtd || qtd <= 0) {
+      this.showToast('Informe valores válidos para gerar as parcelas.', 'warning');
+      return;
+    }
+
+    const debts = window.StorageService.getDebts();
+    const d = debts.find(x => x.id === debtId);
+    if (!d) return;
+
+    const [anoBase, mesBase, diaBase] = dataInicial.split('-').map(Number);
+    const newTransactions = [];
+
+    for (let i = 1; i <= qtd; i++) {
+      const totalMeses = (mesBase - 1) + (i - 1);
+      const y = anoBase + Math.floor(totalMeses / 12);
+      const m = ((totalMeses % 12) + 12) % 12;
+      const maxDias = new Date(y, m + 1, 0).getDate();
+      const diaEfetivo = Math.min(diaBase, maxDias);
+      const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(diaEfetivo).padStart(2, '0')}`;
+
+      const trans = {
+        id: 'tr_inst_' + Date.now().toString(36) + '_' + i + '_' + Math.random().toString(36).substr(2, 4),
+        tipo: 'despesa',
+        descricao: `[${d.instituicao || d.nome}] Parcela ${i}/${qtd}`,
+        valor: valor,
+        data: dateStr,
+        categoria: 'Empréstimo / Financiamento',
+        metodo: metodo || 'Pix',
+        status: 'pendente',
+        debtId: d.id,
+        parcela: `${i}/${qtd}`,
+        recorrencia: 'parcelada'
+      };
+      newTransactions.push(trans);
+    }
+
+    // Salva todas as transações
+    newTransactions.forEach(t => {
+      window.StorageService.saveTransaction(t);
+      if (window.SheetsService && window.SheetsService.isConnected()) {
+        window.SheetsService.sendAction('add_transaction', t);
+      }
+    });
+
+    this.closeModal('modal-generate-installments');
+    this.showToast(`🎉 ${qtd} parcelas agendadas com sucesso no seu extrato!`, 'success');
     this.render();
   },
 
