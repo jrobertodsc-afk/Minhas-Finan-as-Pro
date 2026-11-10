@@ -544,10 +544,10 @@ const App = {
     const pctDebts = totalDebts > 0 ? Math.min(100, Math.round((pagoDebts / totalDebts) * 100)) : 100;
 
     let scorePoupanca = (taxaPoupanca >= 25) ? 25 : (taxaPoupanca >= 15 ? 20 : (taxaPoupanca > 0 ? 12 : 0));
-    const metaReserva = Number(config.metaReserva) || 20000;
-    const pctReserva = Math.min(100, Math.round((totalReserva / metaReserva) * 100));
-    let scoreReserva = Math.min(25, Math.round((pctReserva / 100) * 25));
-    let scoreDividas = Math.min(25, Math.round((pctDebts / 100) * 25));
+    const metaReserva = Number(config.metaReserva) || 0;
+    const pctReserva = metaReserva > 0 ? Math.min(100, Math.round((totalReserva / metaReserva) * 100)) : 0;
+    let scoreReserva = metaReserva > 0 ? Math.min(25, Math.round((pctReserva / 100) * 25)) : (totalReserva > 0 ? 20 : 10);
+    let scoreDividas = debts.length === 0 ? 25 : Math.min(25, Math.round((pctDebts / 100) * 25));
     let scoreInvest = totalInvestido > 0 ? Math.min(25, Math.max(10, Math.round((totalInvestido / 50000) * 25))) : 5;
 
     const scoreSaude = Math.min(100, Math.max(15, scorePoupanca + scoreReserva + scoreDividas + scoreInvest));
@@ -573,10 +573,10 @@ const App = {
       }
     }
     if (elScoreTip) {
-      if (scoreSaude >= 80) elScoreTip.textContent = 'Gestão exemplar! Sobra consistente e patrimônio em alta.';
-      else if (pctReserva < 50) elScoreTip.textContent = 'Priorize reforçar sua Reserva de Emergência para imprevistos.';
-      else if (pctDebts < 50) elScoreTip.textContent = 'Foque na amortização de dívidas para diminuir o pagamento de juros.';
-      else elScoreTip.textContent = 'Controle os gastos do dia a dia para elevar sua taxa de sobra.';
+      if (scoreSaude >= 80) elScoreTip.textContent = 'Gestão exemplar! Sobra consistente e finanças organizadas.';
+      else if (debts.length > 0 && pctDebts < 50) elScoreTip.textContent = 'Foque na amortização de dívidas para diminuir o pagamento de juros.';
+      else if (metaReserva > 0 && pctReserva < 50) elScoreTip.textContent = 'Priorize reforçar sua Reserva de Emergência para imprevistos.';
+      else elScoreTip.textContent = 'Controle os gastos diários para manter o saldo livre sempre positivo.';
     }
 
     // 8.4 Atualiza Card 1 (Saldo Operacional e Saldo em Conta)
@@ -609,8 +609,13 @@ const App = {
 
     const elPctReserva = document.getElementById('dash-pct-reserva');
     const elBarReserva = document.getElementById('dash-bar-reserva');
-    if (elPctReserva) elPctReserva.textContent = `${pctReserva}% da meta`;
-    if (elBarReserva) elBarReserva.style.width = `${pctReserva}%`;
+    if (metaReserva > 0) {
+      if (elPctReserva) elPctReserva.textContent = `${pctReserva}% da meta`;
+      if (elBarReserva) elBarReserva.style.width = `${pctReserva}%`;
+    } else {
+      if (elPctReserva) elPctReserva.textContent = 'Sem meta (Opcional)';
+      if (elBarReserva) elBarReserva.style.width = '0%';
+    }
 
     // 10. Atualiza Card 3 (Investimentos & Proventos)
     const elInvest = document.getElementById('dash-total-investido');
@@ -685,29 +690,44 @@ const App = {
     }
 
     // Metas de Investimento (Dashboard)
-    const metaInv = Number(config.metaInvestimento) || 100000;
-    const pctInv = Math.min(100, Math.round((totalInvestido / metaInv) * 100));
+    const metaInv = Number(config.metaInvestimento) || 0;
     const elDashGoalPatInfo = document.getElementById('dash-goal-patrimonio-info');
     const elDashGoalPatBar = document.getElementById('dash-goal-patrimonio-bar');
-    if (elDashGoalPatInfo) elDashGoalPatInfo.textContent = `${this.formatMoney(totalInvestido)} / ${this.formatMoney(metaInv)} (${pctInv}%)`;
-    if (elDashGoalPatBar) elDashGoalPatBar.style.width = `${pctInv}%`;
+    if (metaInv > 0) {
+      const pctInv = Math.min(100, Math.round((totalInvestido / metaInv) * 100));
+      if (elDashGoalPatInfo) elDashGoalPatInfo.textContent = `${this.formatMoney(totalInvestido)} / ${this.formatMoney(metaInv)} (${pctInv}%)`;
+      if (elDashGoalPatBar) elDashGoalPatBar.style.width = `${pctInv}%`;
+    } else {
+      if (elDashGoalPatInfo) elDashGoalPatInfo.textContent = 'Sem meta definida (Opcional)';
+      if (elDashGoalPatBar) elDashGoalPatBar.style.width = '0%';
+    }
 
     const aportesReservaMes = emergencyFunds
       .filter(r => r.tipo === 'Aporte' && (window.SheetsService.normalizeDate(r.data) || '').startsWith(this.currentMonth))
       .reduce((a, r) => a + Number(r.valor), 0);
-    const metaAporte = Number(config.metaAporteMensal) || 1500;
-    const pctAporte = Math.min(100, Math.round((aportesReservaMes / metaAporte) * 100));
+    const metaAporte = Number(config.metaAporteMensal) || 0;
     const elDashGoalAporteInfo = document.getElementById('dash-goal-aporte-info');
     const elDashGoalAporteBar = document.getElementById('dash-goal-aporte-bar');
-    if (elDashGoalAporteInfo) elDashGoalAporteInfo.textContent = `${this.formatMoney(aportesReservaMes)} / ${this.formatMoney(metaAporte)} (${pctAporte}%)`;
-    if (elDashGoalAporteBar) elDashGoalAporteBar.style.width = `${pctAporte}%`;
+    if (metaAporte > 0) {
+      const pctAporte = Math.min(100, Math.round((aportesReservaMes / metaAporte) * 100));
+      if (elDashGoalAporteInfo) elDashGoalAporteInfo.textContent = `${this.formatMoney(aportesReservaMes)} / ${this.formatMoney(metaAporte)} (${pctAporte}%)`;
+      if (elDashGoalAporteBar) elDashGoalAporteBar.style.width = `${pctAporte}%`;
+    } else {
+      if (elDashGoalAporteInfo) elDashGoalAporteInfo.textContent = 'Sem meta (Opcional)';
+      if (elDashGoalAporteBar) elDashGoalAporteBar.style.width = '0%';
+    }
 
     // Metas de Quitação (Dashboard)
     const elDashDebtPct = document.getElementById('dash-debt-pct-info');
     const elDashDebtBar = document.getElementById('dash-debt-bar');
     const elDashDebtRestante = document.getElementById('dash-debt-restante-info');
-    if (elDashDebtPct) elDashDebtPct.textContent = `${pctDebts}% Quitado`;
-    if (elDashDebtBar) elDashDebtBar.style.width = `${pctDebts}%`;
+    if (debts.length === 0) {
+      if (elDashDebtPct) elDashDebtPct.innerHTML = '<span class="text-emerald-400 font-semibold">Zero Dívidas 🎉</span>';
+      if (elDashDebtBar) elDashDebtBar.style.width = '100%';
+    } else {
+      if (elDashDebtPct) elDashDebtPct.textContent = `${pctDebts}% Quitado`;
+      if (elDashDebtBar) elDashDebtBar.style.width = `${pctDebts}%`;
+    }
     if (elDashDebtRestante) elDashDebtRestante.textContent = this.formatMoney(restanteDebts);
 
     // 13. Orçamento Inteligente por Tetos de Categoria

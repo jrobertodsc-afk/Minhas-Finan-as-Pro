@@ -17,12 +17,12 @@ const STORAGE_KEYS = {
 
 const DEFAULT_CONFIG = {
   sheetsUrl: 'https://script.google.com/macros/s/AKfycbzXZsoDoWuRXz5FwrefxTrZadXjwsen4cBL3YenOhwYMm4sn6YSqIbQGwaB6HKAV5xOcA/exec',
-  metaReserva: 24000,
-  custoFixoMensal: 4000,
+  metaReserva: 0,
+  custoFixoMensal: 0,
   mesesReserva: 6,
-  metaInvestimento: 100000,
-  metaAporteMensal: 1500,
-  metaRendaPassiva: 500,
+  metaInvestimento: 0,
+  metaAporteMensal: 0,
+  metaRendaPassiva: 0,
   moeda: 'BRL',
   tema: 'dark',
   orcamentos: {
@@ -72,10 +72,7 @@ const DEMO_DATA = {
     { id: 'div_2', data: new Date().toISOString().slice(0, 7) + '-15', ativo: 'MXRF11', tipo: 'Rendimento', valor: 45.00 },
     { id: 'div_3', data: new Date().toISOString().slice(0, 7) + '-01', ativo: 'ITUB4', tipo: 'JCP', valor: 26.50 }
   ],
-  quitacao: [
-    { id: 'deb_1', nome: 'Financiamento Automotivo', instituicao: 'Banco Pan', valorTotal: 36000.00, valorPago: 21600.00, valorParcela: 1000.00, dataLimite: '2027-12-31', observacao: 'Faltam 14 parcelas' },
-    { id: 'deb_2', nome: 'Empréstimo Reforma Casa', instituicao: 'Nubank', valorTotal: 12000.00, valorPago: 9600.00, valorParcela: 800.00, dataLimite: '2027-04-30', observacao: 'Faltam 3 parcelas' }
-  ]
+  quitacao: []
 };
 
 const StorageService = {
@@ -226,7 +223,19 @@ const StorageService = {
   // Metas de Quitação (Dívidas / Empréstimos / Financiamentos)
   getDebts() {
     const raw = localStorage.getItem(STORAGE_KEYS.DEBTS);
-    return raw ? JSON.parse(raw) : (DEMO_DATA.quitacao || []);
+    if (!raw) return [];
+    try {
+      let list = JSON.parse(raw);
+      // Remove dívidas de exemplo fictícias de versões anteriores (deb_1 e deb_2)
+      const filtered = list.filter(d => d.id !== 'deb_1' && d.id !== 'deb_2');
+      if (filtered.length !== list.length) {
+        localStorage.setItem(STORAGE_KEYS.DEBTS, JSON.stringify(filtered));
+        return filtered;
+      }
+      return list;
+    } catch (e) {
+      return [];
+    }
   },
 
   saveDebt(debt) {
