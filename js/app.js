@@ -405,14 +405,15 @@ const App = {
     const patrimonioTotal = totalReserva + totalInvestido + (saldoContaHoje > 0 ? saldoContaHoje : 0);
 
     // 6. Seleção dos valores conforme o modo ativo
-    // Em modo MENSAL, os cards de receitas e despesas incorporam as pendências herdadas do mês anterior
-    const receitasExibidas = isTotal ? totalReceitasGeral : (totalReceitasMes + pastPendingReceitas);
+    // Em modo MENSAL, os cards exibem estritamente as movimentações próprias do mês selecionado.
+    // A sobra/déficit acumulado dos meses anteriores é consolidado no card "1. Saldo Anterior" (sem dobrar lançamentos).
+    const receitasExibidas = isTotal ? totalReceitasGeral : totalReceitasMes;
     const receitasRealizadasExibidas = isTotal ? receitasPagasGeral : receitasPagasMes;
-    const receitasPendentesExibidas = isTotal ? receitasPendentesGeral : (receitasPendentesMes + pastPendingReceitas);
+    const receitasPendentesExibidas = isTotal ? receitasPendentesGeral : receitasPendentesMes;
 
-    const despesasExibidas = isTotal ? totalDespesasGeral : (totalDespesasMes + pastPendingDespesas);
+    const despesasExibidas = isTotal ? totalDespesasGeral : totalDespesasMes;
     const despesasPagasExibidas = isTotal ? despesasPagasGeral : despesasPagasMes;
-    const despesasPendentesExibidas = isTotal ? despesasPendentesGeral : (despesasPendentesMes + pastPendingDespesas);
+    const despesasPendentesExibidas = isTotal ? despesasPendentesGeral : despesasPendentesMes;
 
     const proventosExibidos = isTotal ? totalProventosGeral : totalProventosMes;
     const saldoOperacionalMes = isTotal ? saldoGeral : (totalReceitasMes - totalDespesasMes);
@@ -923,25 +924,19 @@ const App = {
 
     const saldoResidualAnteriorTotal = this.filterAllMonths ? 0 : (sobraCaixaPassada + pastPendRec - pastPendDesp);
 
-    // 2. Filtra pelo mês selecionado + pendências herdadas de meses anteriores
+    // 2. Filtra pelo mês selecionado (cada mês exibe estritamente seus lançamentos, sem duplicar com o passado)
     let filtered = transactions;
     if (!this.filterAllMonths) {
       filtered = filtered.filter(t => {
         const norm = this.normalizeDate(t.data);
-        const noMes = (norm || '').startsWith(this.currentMonth);
-        const pendenteAnterior = (norm || '') < startOfCurrentMonth && t.status === 'pendente';
-        return noMes || pendenteAnterior;
+        return (norm || '').startsWith(this.currentMonth);
       });
     }
 
-    // Ordenação inteligente: Pendências herdadas de meses anteriores no topo, depois data mais recente
+    // Ordenação: data mais recente primeiro
     filtered.sort((a, b) => {
       const normA = this.normalizeDate(a.data);
       const normB = this.normalizeDate(b.data);
-      const isPendAntA = !this.filterAllMonths && (normA || '') < startOfCurrentMonth && a.status === 'pendente';
-      const isPendAntB = !this.filterAllMonths && (normB || '') < startOfCurrentMonth && b.status === 'pendente';
-      if (isPendAntA && !isPendAntB) return -1;
-      if (!isPendAntA && isPendAntB) return 1;
       return (normB || '').localeCompare(normA || '');
     });
 
